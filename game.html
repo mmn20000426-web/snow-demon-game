@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>會員制射擊</title>
+    <title>會員制的打架</title>
     <style>
         * {
             box-sizing: border-box;
@@ -41,8 +41,8 @@
             background: #0d0f18;
             display: block;
             cursor: crosshair;
-            width: 100%; /* 自動適應容器寬度 */
-            height: auto; /* 保持高寬比例 */
+            width: 100%;
+            height: auto;
         }
 
         /* 📱 整合至遊戲區的手機快捷按鈕區 */
@@ -81,21 +81,29 @@
             box-shadow: none;
         }
         
-        /* 🎛️ 控制面板 */
-        #control-panel {
+        /* 🎛️ 修正：彈窗式控制面板，方便手機關閉 */
+        #control-panel-overlay {
             display: none;
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(30, 34, 48, 0.95);
-            border: 2px solid #333a4e;
-            border-radius: 8px;
-            padding: 15px;
-            width: 260px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.7);
-            max-height: 80vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.75);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        #control-panel {
+            background: rgba(30, 34, 48, 0.98);
+            border: 2px solid #ff4757;
+            border-radius: 12px;
+            padding: 20px;
+            width: 90%;
+            max-width: 340px;
+            box-shadow: 0 0 25px rgba(0,0,0,0.9);
+            max-height: 85vh;
             overflow-y: auto;
-            z-index: 999;
         }
         #control-panel h3 {
             margin-top: 0;
@@ -104,7 +112,20 @@
             border-bottom: 1px solid #333a4e;
             padding-bottom: 6px;
             text-align: center;
+            font-size: 18px;
+        }
+        .close-panel-btn {
+            width: 100%;
+            background: #ff4757;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
             font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
         .panel-section {
             margin-bottom: 12px;
@@ -126,8 +147,8 @@
         }
         .toggle-item input[type="checkbox"] {
             cursor: pointer;
-            width: 15px;
-            height: 15px;
+            width: 18px;
+            height: 18px;
         }
         .btn-grid {
             display: grid;
@@ -138,10 +159,10 @@
             background: #3498db;
             color: white;
             border: none;
-            padding: 6px;
+            padding: 8px;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 11px;
+            font-size: 12px;
             font-weight: bold;
             transition: background 0.2s;
         }
@@ -166,7 +187,7 @@
 </head>
 <body>
 
-<h2>🚀 彈幕大作戰！</h2>
+<h2>會員制的打架</h2>
 
 <div id="game-container">
     <canvas id="gameCanvas" width="650" height="650"></canvas>
@@ -177,67 +198,70 @@
     </div>
 </div>
 
-<div id="control-panel">
-    <h3>🎛️ 控制台 (按 [I] 關閉)</h3>
-    
-    <div class="panel-section">
-        <h4>⚡ 即時狀態控制</h4>
-        <div class="toggle-item">
-            <label for="sw-pause-boss" style="color:#ff6b6b; font-weight:bold;">⏸️ 暫停 Boss 移動/攻擊</label>
-            <input type="checkbox" id="sw-pause-boss">
+<div id="control-panel-overlay">
+    <div id="control-panel">
+        <button class="close-panel-btn" onclick="toggleControlPanel()">❌ 關閉控制台</button>
+        <h3>🎛️ 控制台</h3>
+        
+        <div class="panel-section">
+            <h4>⚡ 即時狀態控制</h4>
+            <div class="toggle-item">
+                <label for="sw-pause-boss" style="color:#ff6b6b; font-weight:bold;">⏸️ 暫停 Boss 移動/攻擊</label>
+                <input type="checkbox" id="sw-pause-boss">
+            </div>
+            <button class="panel-btn success" style="width: 100%; margin-top: 5px;" onclick="healPlayerToFull()">💚 補滿玩家血量</button>
         </div>
-        <button class="panel-btn success" style="width: 100%; margin-top: 5px;" onclick="healPlayerToFull()">💚 補滿玩家血量</button>
-    </div>
 
-    <div class="panel-section">
-        <h4>自動釋放開關</h4>
-        <div class="toggle-item">
-            <label for="sw-orange">橘色扇形彈幕</label>
-            <input type="checkbox" id="sw-orange" checked>
+        <div class="panel-section">
+            <h4>自動釋放開關</h4>
+            <div class="toggle-item">
+                <label for="sw-orange">橘色扇形彈幕</label>
+                <input type="checkbox" id="sw-orange" checked>
+            </div>
+            <div class="toggle-item">
+                <label for="sw-green">綠色長條彈幕</label>
+                <input type="checkbox" id="sw-green" checked>
+            </div>
+            <div class="toggle-item">
+                <label for="sw-brown">咖啡圓形彈幕</label>
+                <input type="checkbox" id="sw-brown" checked>
+            </div>
+            <div class="toggle-item">
+                <label for="sw-pudding">追蹤布丁（封印區）</label>
+                <input type="checkbox" id="sw-pudding" checked>
+            </div>
+            <div class="toggle-item">
+                <label for="sw-laser">黃色雷射 (4.5s)</label>
+                <input type="checkbox" id="sw-laser" checked>
+            </div>
+            <div class="toggle-item">
+                <label for="sw-burger">漢堡肉 (6s)</label>
+                <input type="checkbox" id="sw-burger" checked>
+            </div>
+            <div class="toggle-item">
+                <label for="sw-noodle">麵條牆 (6s)</label>
+                <input type="checkbox" id="sw-noodle" checked>
+            </div>
+            <div class="toggle-item">
+                <label for="sw-medkit">急救包 Medkit (4s)</label>
+                <input type="checkbox" id="sw-medkit" checked>
+            </div>
         </div>
-        <div class="toggle-item">
-            <label for="sw-green">綠色長條彈幕</label>
-            <input type="checkbox" id="sw-green" checked>
-        </div>
-        <div class="toggle-item">
-            <label for="sw-brown">咖啡圓形彈幕</label>
-            <input type="checkbox" id="sw-brown" checked>
-        </div>
-        <div class="toggle-item">
-            <label for="sw-pudding">追蹤布丁（封印區）</label>
-            <input type="checkbox" id="sw-pudding" checked>
-        </div>
-        <div class="toggle-item">
-            <label for="sw-laser">黃色雷射 (4.5s)</label>
-            <input type="checkbox" id="sw-laser" checked>
-        </div>
-        <div class="toggle-item">
-            <label for="sw-burger">漢堡肉 (6s)</label>
-            <input type="checkbox" id="sw-burger" checked>
-        </div>
-        <div class="toggle-item">
-            <label for="sw-noodle">麵條牆 (6s)</label>
-            <input type="checkbox" id="sw-noodle" checked>
-        </div>
-        <div class="toggle-item">
-            <label for="sw-medkit">急救包 Medkit (4s)</label>
-            <input type="checkbox" id="sw-medkit" checked>
-        </div>
-    </div>
 
-    <div class="panel-section">
-        <h4>手動即時觸發</h4>
-        <div class="btn-grid">
-            <button class="panel-btn" onclick="triggerLaser()">發射雷射</button>
-            <button class="panel-btn" onclick="triggerNoodles()">召喚麵條</button>
-            <button class="panel-btn" onclick="triggerBurger()">丟漢堡肉</button>
-            <button class="panel-btn" onclick="triggerMedkit()">掉落Medkit</button>
+        <div class="panel-section">
+            <h4>手動即時觸發</h4>
+            <div class="btn-grid">
+                <button class="panel-btn" onclick="triggerLaser()">發射雷射</button>
+                <button class="panel-btn" onclick="triggerNoodles()">召喚麵條</button>
+                <button class="panel-btn" onclick="triggerBurger()">丟漢堡肉</button>
+                <button class="panel-btn" onclick="triggerMedkit()">掉落Medkit</button>
+            </div>
         </div>
-    </div>
 
-    <div class="panel-section">
-        <h4>除錯功能</h4>
-        <button class="panel-btn danger" style="width: 100%;" onclick="clearEnemyBullets()">清空敵方子彈</button>
+        <div class="panel-section">
+            <h4>除錯功能</h4>
+            <button class="panel-btn danger" style="width: 100%;" onclick="clearEnemyBullets()">清空敵方子彈</button>
+        </div>
     </div>
 </div>
 
@@ -294,7 +318,7 @@ let npc3SpecialTextTimer = null;
 let isNpc3SpecialText = false;
 
 let shieldCooldown = 0;
-const SHIELD_CD_MAX = 120; // 2 秒冷卻
+const SHIELD_CD_MAX = 120; 
 
 const bossWallY = 140;
 
@@ -336,8 +360,8 @@ let isLaserActive = false;
 let laserDuration = 0;
 
 function toggleControlPanel() {
-    const panel = document.getElementById('control-panel');
-    panel.style.display = (panel.style.display === 'none' || panel.style.display === '') ? 'block' : 'none';
+    const overlay = document.getElementById('control-panel-overlay');
+    overlay.style.display = (overlay.style.display === 'none' || overlay.style.display === '') ? 'flex' : 'none';
 }
 
 function healPlayerToFull() {
@@ -597,7 +621,6 @@ canvas.addEventListener('touchmove', e => {
 
 window.addEventListener('touchend', () => isDragging = false);
 
-// 📱 修正手機觸控座標計算 (考慮 RWD 縮放比)
 function updatePlayerPos(evt) {
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
@@ -1168,7 +1191,7 @@ function draw() {
 
         ctx.fillStyle = '#ffffff';
         ctx.font = '16px "Microsoft JhengHei", Arial';
-        ctx.fillText('點擊重新開始被雷普', canvas.width / 2, 440);
+        ctx.fillText('點擊重新開始', canvas.width / 2, 440);
         ctx.textAlign = 'left';
     }
 
@@ -1187,7 +1210,7 @@ function draw() {
 
         ctx.fillStyle = '#ffffff';
         ctx.font = '16px "Microsoft JhengHei", Arial';
-        ctx.fillText('點擊重新開始被雷普', canvas.width / 2, 510);
+        ctx.fillText('點擊重新開始', canvas.width / 2, 510);
         ctx.textAlign = 'left';
     }
 }
