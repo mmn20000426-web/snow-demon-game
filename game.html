@@ -30,7 +30,6 @@
             font-size: 20px;
         }
 
-        /* 🖥️ 電腦版 / 📱 手機版 響應式整體外框 */
         #main-wrapper {
             display: flex;
             flex-direction: column;
@@ -40,7 +39,6 @@
             max-width: 1000px;
         }
 
-        /* 📱 遊戲區域 */
         #game-container {
             position: relative;
             box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
@@ -61,7 +59,6 @@
             height: auto;
         }
 
-        /* 📱 觸控按鈕區 */
         .mobile-touch-bar {
             width: 100%;
             background: #1a1c23;
@@ -97,7 +94,6 @@
             box-shadow: none;
         }
 
-        /* 🖥️ 右側側邊欄區域 */
         #sidebar-container {
             display: flex;
             flex-direction: column;
@@ -105,7 +101,6 @@
             width: min(100vw - 20px, 600px);
         }
         
-        /* 🏆 成就顯示區 (高度緊湊化) */
         #achievement-section {
             background: #1a1c23;
             border: 2px solid #FFD700;
@@ -142,7 +137,6 @@
             box-shadow: 0 0 6px rgba(96, 165, 250, 0.5);
         }
 
-        /* 🎛️ 控制面板 (緊湊化) */
         #control-panel {
             background: rgba(30, 34, 48, 0.98);
             border: 2px solid #ff4757;
@@ -223,7 +217,6 @@
             background: #e74c3c;
         }
 
-        /* 💻 電腦版螢幕橫向排版 */
         @media (min-width: 850px) {
             #main-wrapper {
                 flex-direction: row;
@@ -245,7 +238,6 @@
             }
         }
 
-        /* 📱 手機版螢幕 Modal 遮罩式控制台 */
         @media (max-width: 849px) {
             #control-panel-overlay {
                 display: none;
@@ -397,7 +389,6 @@ const playArea = {
     width: 420
 };
 
-// --- 載入圖片 ---
 const imgPlayer = new Image(); imgPlayer.src = 'player.jpg';
 const imgBoss = new Image(); imgBoss.src = 'boss.jpg';
 const imgGameOver = new Image(); imgGameOver.src = 'boss.jpg';  
@@ -425,7 +416,6 @@ let gameWin = false;
 let isPausedForPanel = false;
 let frameCount = 0;
 
-// 🏆 成就與控制台監控變數
 let hasUsedConsole = false;
 let tookDamage = false;
 const unlockedAchievements = {
@@ -465,8 +455,8 @@ const boss = {
     height: 70,
     dir: 1,
     speed: 2.5,
-    hp: 75,
-    maxHp: 75
+    hp: 100,
+    maxHp: 100
 };
 
 const shields = [];
@@ -482,13 +472,11 @@ let laserTimer = 0;
 let isLaserActive = false;
 let laserDuration = 0;
 
-// 🛠️ 標記使用了控制台功能
 function markConsoleUsed() {
     hasUsedConsole = true;
 }
 
 function toggleControlPanel() {
-    // 🛠️ 單純開啟控制台不再直接判定為作弊
     const overlay = document.getElementById('control-panel-overlay');
     const isMobile = window.innerWidth < 850;
 
@@ -760,7 +748,6 @@ function startGame() {
     }
 }
 
-// 🛠️ 監聽按鍵事件 (加入 preventDefault 防止 Space 滾動頁面)
 window.addEventListener('keydown', e => {
     if (e.code === 'Space' || e.key === ' ') {
         e.preventDefault();
