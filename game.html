@@ -298,10 +298,10 @@
         <div id="achievement-section">
             <h3>🏆 遊戲成就解鎖</h3>
             <div class="achievement-grid">
-                <div id="ach-1" class="achievement-card">🔒 沒壞朋友<br><small>(無開控制台)</small></div>
-                <div id="ach-2" class="achievement-card">🔒 慘遭赤石<br><small>(無開控制台)</small></div>
+                <div id="ach-1" class="achievement-card">🔒 沒交到壞朋友(喜)<br><small>(無開控制台)</small></div>
+                <div id="ach-2" class="achievement-card">🔒 被無限餵石力(悲)<br><small>(無開控制台)</small></div>
                 <div id="ach-3" class="achievement-card">🔒 低調的黑客</div>
-                <div id="ach-4" class="achievement-card">🔒 怕不是開掛了(存疑)<br><small>(無開控制台)</small></div>
+                <div id="ach-4" class="achievement-card">🔒 怕不是桂口巴<br><small>(無開控制台)</small></div>
             </div>
         </div>
 
@@ -346,11 +346,11 @@
                         <input type="checkbox" id="sw-burger" checked onchange="markConsoleUsed()">
                     </div>
                     <div class="toggle-item">
-                        <label for="sw-noodle">麵條牆 (7s)</label>
+                        <label for="sw-noodle">麵條牆 (6s)</label>
                         <input type="checkbox" id="sw-noodle" checked onchange="markConsoleUsed()">
                     </div>
                     <div class="toggle-item">
-                        <label for="sw-medkit">急救包 Medkit (2.5s)</label>
+                        <label for="sw-medkit">急救包 Medkit (4s)</label>
                         <input type="checkbox" id="sw-medkit" checked onchange="markConsoleUsed()">
                     </div>
                 </div>
@@ -366,7 +366,7 @@
                 </div>
 
                 <div class="panel-section">
-                    <h4>愛赤石喝梟的德川</h4>
+                    <h4>除錯功能</h4>
                     <button class="panel-btn danger" style="width: 100%;" onclick="clearEnemyBullets()">清空敵方子彈</button>
                 </div>
             </div>
@@ -545,7 +545,7 @@ function triggerNoodles() {
             width: 18,
             height: 75,
             angle: Math.random() * Math.PI,
-            duration: 180
+            duration: 360 // 6 秒
         });
     }
 }
@@ -684,15 +684,56 @@ function spawnEnemyBullets() {
 
     if (swLaser) {
         laserTimer++;
-        if (laserTimer >= 270) {
-            triggerLaser();
+        if (laserTimer >= 540) { // 9 秒冷卻 (9 * 60 = 540)
+            isLaserActive = true;
+            laserDuration = 45;
             laserTimer = 0;
         }
     }
 
-    if (swBurger && frameCount % 360 === 0) triggerBurger();
-    if (swNoodle && frameCount % 360 === 0) triggerNoodles();
-    if (swMedkit && frameCount % 240 === 0) triggerMedkit();
+    if (swBurger && frameCount % 360 === 0) {
+        const startX = boss.x + boss.width / 2;
+        const startY = boss.y + boss.height;
+        const targetX = Math.random() * (playArea.width - 80) + playArea.left + 40;
+        const targetY = Math.random() * (canvas.height - 250) + 150;
+        const angle = Math.atan2(targetY - startY, targetX - startX);
+
+        burgerSteaks.push({
+            x: startX,
+            y: startY,
+            targetX: targetX,
+            targetY: targetY,
+            vx: Math.cos(angle) * 7,
+            vy: Math.sin(angle) * 7,
+            width: 38,
+            height: 26,
+            isStationary: false,
+            stayDuration: 180
+        });
+    }
+
+    if (swNoodle && frameCount % 360 === 0) { // 麵條 6 秒觸發一次
+        for (let i = 0; i < 4; i++) {
+            noodles.push({
+                x: Math.random() * (playArea.width - 60) + playArea.left + 30,
+                y: Math.random() * (canvas.height - 300) + 180,
+                width: 18,
+                height: 75,
+                angle: Math.random() * Math.PI,
+                duration: 360 // 麵條持續 6 秒
+            });
+        }
+    }
+
+    if (swMedkit && frameCount % 240 === 0) {
+        medkits.push({
+            x: Math.random() * (playArea.width - 35) + playArea.left + 15,
+            y: -30,
+            vy: 2.5,
+            width: 30,
+            height: 30
+        });
+    }
 }
 
 function firePlayerBullet() {
@@ -733,7 +774,7 @@ function playBGM() {
 function triggerGameOver() {
     gameOver = true;
     if (!hasUsedConsole) {
-        unlockAchievement('ach-2', 'ach2', '失敗成就');
+        unlockAchievement('ach-2', 'ach2', '被無限餵石力(悲)');
     }
     bgm.pause();
     bgm.currentTime = 0;
@@ -748,16 +789,16 @@ function triggerWin() {
     bgm.currentTime = 0;
 
     if (hasUsedConsole) {
-        unlockAchievement('ach-3', 'ach3', '開控制台獲勝成就');
+        unlockAchievement('ach-3', 'ach3', '低調的黑客');
         win2Bgm.currentTime = 0;
         win2Bgm.play().catch(() => {});
     } else if (!tookDamage) {
-        unlockAchievement('ach-1', 'ach1', '獲勝成就');
-        unlockAchievement('ach-4', 'ach4', '無傷獲勝成就');
+        unlockAchievement('ach-1', 'ach1', '沒交到壞朋友(喜)');
+        unlockAchievement('ach-4', 'ach4', '怕不是桂口巴');
         win3Bgm.currentTime = 0;
         win3Bgm.play().catch(() => {});
     } else {
-        unlockAchievement('ach-1', 'ach1', '獲勝成就');
+        unlockAchievement('ach-1', 'ach1', '沒交到壞朋友(喜)');
         winBgm.currentTime = 0;
         winBgm.play().catch(() => {});
     }
@@ -784,7 +825,7 @@ window.addEventListener('keydown', e => {
     }
     if (e.key === 'i' || e.key === 'I' || e.code === 'KeyI') toggleControlPanel();
     if (e.key === 'p' || e.key === 'P' || e.code === 'KeyP') {
-        if (!gameOver && !gameWin) triggerWin();
+        if (!gameOver && !gameWin) triggerWin(); // 隱藏技能 P 鍵：完全獨立觸發獲勝，不影響 hasUsedConsole
     }
     if ((gameOver || gameWin) && (e.code === 'Space' || e.code === 'Enter')) resetGame();
 });
@@ -1345,7 +1386,7 @@ function draw() {
         ctx.fillStyle = '#FFD700';
         ctx.font = 'bold 26px "Microsoft JhengHei", Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('點擊螢幕開始赤石', canvas.width / 2, canvas.height / 2);
+        ctx.fillText('點擊螢幕開始遊戲', canvas.width / 2, canvas.height / 2);
         ctx.textAlign = 'left';
         drawAllNPCs();
         return;
