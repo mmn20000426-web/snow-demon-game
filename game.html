@@ -96,7 +96,7 @@
             box-shadow: none;
         }
 
-        /* 🖥️ 右側側邊欄區域（包含成就與控制面板） */
+        /* 🖥️ 右側側邊欄區域 */
         #sidebar-container {
             display: flex;
             flex-direction: column;
@@ -221,7 +221,7 @@
             background: #e74c3c;
         }
 
-        /* 💻 電腦版螢幕 (寬度 >= 850px) 左右橫向排版 */
+        /* 💻 電腦版螢幕橫向排版 */
         @media (min-width: 850px) {
             #main-wrapper {
                 flex-direction: row;
@@ -231,7 +231,6 @@
             #sidebar-container {
                 width: 340px;
             }
-            /* 電腦版時關閉控制台按鈕顯示為隱藏面板 */
             .close-panel-btn {
                 display: none;
             }
@@ -422,7 +421,7 @@ let gameStarted = false;
 let score = 0;
 let gameOver = false;
 let gameWin = false;
-let isPausedForPanel = false; // 控制台開啟暫停狀態
+let isPausedForPanel = false;
 let frameCount = 0;
 
 // 🏆 成就與控制台監控變數
@@ -483,7 +482,7 @@ let isLaserActive = false;
 let laserDuration = 0;
 
 function toggleControlPanel() {
-    hasUsedConsole = true; // 標記為使用過控制台
+    hasUsedConsole = true;
     const overlay = document.getElementById('control-panel-overlay');
     const isMobile = window.innerWidth < 850;
 
@@ -492,7 +491,6 @@ function toggleControlPanel() {
         overlay.style.display = isHidden ? 'flex' : 'none';
         isPausedForPanel = isHidden;
     } else {
-        // 電腦版切換暫停狀態
         isPausedForPanel = !isPausedForPanel;
     }
 
@@ -528,11 +526,12 @@ function triggerNoodles() {
     hasUsedConsole = true;
     for (let i = 0; i < 4; i++) {
         noodles.push({
-            x: Math.random() * (playArea.width - 40) + playArea.left + 20,
+            x: Math.random() * (playArea.width - 60) + playArea.left + 30,
             y: Math.random() * (canvas.height - 300) + 180,
-            width: 16,
-            height: 70,
-            duration: 120
+            width: 18,
+            height: 75,
+            angle: Math.random() * Math.PI, // 🍜 丟出時角度隨機
+            duration: 180
         });
     }
 }
@@ -573,6 +572,18 @@ function triggerMedkit() {
 function clearEnemyBullets() {
     hasUsedConsole = true;
     enemyBullets.length = 0;
+}
+
+function resetControlPanelSwitches() {
+    document.getElementById('sw-pause-boss').checked = false;
+    document.getElementById('sw-orange').checked = true;
+    document.getElementById('sw-green').checked = true;
+    document.getElementById('sw-brown').checked = true;
+    document.getElementById('sw-pudding').checked = true;
+    document.getElementById('sw-laser').checked = true;
+    document.getElementById('sw-burger').checked = true;
+    document.getElementById('sw-noodle').checked = true;
+    document.getElementById('sw-medkit').checked = true;
 }
 
 function spawnEnemyBullets() {
@@ -705,6 +716,7 @@ function playBGM() {
 
 function triggerGameOver() {
     gameOver = true;
+    // 🛠️ 穩定觸發失敗成就判定
     if (!hasUsedConsole) {
         unlockAchievement('ach-2', 'ach2', '失敗成就');
     }
@@ -720,7 +732,6 @@ function triggerWin() {
     bgm.pause();
     bgm.currentTime = 0;
 
-    // 🎵 根據勝利條件播放對應音效
     if (hasUsedConsole) {
         unlockAchievement('ach-3', 'ach3', '開控制台獲勝成就');
         win2Bgm.currentTime = 0;
@@ -818,6 +829,9 @@ function resetGame() {
     hasUsedConsole = false;
     tookDamage = false;
 
+    // 🧹 重置控制面板效果開關狀態
+    resetControlPanelSwitches();
+
     enemyBullets.length = 0;
     playerBullets.length = 0;
     shields.length = 0;
@@ -873,6 +887,19 @@ function checkAABBCollision(rect1, rect2) {
         rect1.y < rect2.y + rect2.height &&
         rect1.y + rect1.height > rect2.y
     );
+}
+
+// 🍜 點與旋轉麵條牆的碰撞檢測
+function checkPointNoodleCollision(px, py, nd) {
+    const cx = nd.x;
+    const cy = nd.y;
+    const cos = Math.cos(-nd.angle);
+    const sin = Math.sin(-nd.angle);
+    const dx = px - cx;
+    const dy = py - cy;
+    const rx = cos * dx - sin * dy;
+    const ry = sin * dx + cos * dy;
+    return Math.abs(rx) <= nd.width / 2 + 5 && Math.abs(ry) <= nd.height / 2 + 5;
 }
 
 function checkShieldCollision(shield, eb) {
@@ -937,8 +964,9 @@ function update() {
     player.x = Math.max(playArea.left, Math.min(playArea.right - player.width, player.x));
     player.y = Math.max(bossWallY, Math.min(canvas.height - player.height, player.y));
 
+    // 🍜 麵條阻擋玩家移動
     for (let nd of noodles) {
-        if (checkAABBCollision(player, nd)) {
+        if (checkPointNoodleCollision(player.x + player.width / 2, player.y + player.height / 2, nd)) {
             player.x = oldX;
             player.y = oldY;
             break;
@@ -1050,9 +1078,22 @@ function update() {
         }
     }
 
+    // 🍜 玩家子彈移動 & 麵條阻擋判定
     for (let i = playerBullets.length - 1; i >= 0; i--) {
         const pb = playerBullets[i];
         pb.y += pb.vy;
+
+        let blockedByNoodle = false;
+        for (let nd of noodles) {
+            if (checkPointNoodleCollision(pb.x, pb.y, nd)) {
+                blockedByNoodle = true;
+                break;
+            }
+        }
+        if (blockedByNoodle) {
+            playerBullets.splice(i, 1);
+            continue;
+        }
 
         if (pb.x > boss.x && pb.x < boss.x + boss.width && pb.y > boss.y && pb.y < boss.y + boss.height) {
             boss.hp--;
@@ -1063,10 +1104,23 @@ function update() {
         if (pb.y < -10) playerBullets.splice(i, 1);
     }
 
+    // 🍜 敵方子彈移動 & 麵條阻擋判定
     for (let i = enemyBullets.length - 1; i >= 0; i--) {
         const eb = enemyBullets[i];
         eb.x += eb.vx;
         eb.y += eb.vy;
+
+        let blockedByNoodle = false;
+        for (let nd of noodles) {
+            if (checkPointNoodleCollision(eb.x, eb.y, nd)) {
+                blockedByNoodle = true;
+                break;
+            }
+        }
+        if (blockedByNoodle) {
+            enemyBullets.splice(i, 1);
+            continue;
+        }
 
         let blockedByShield = false;
         for (let j = shields.length - 1; j >= 0; j--) {
@@ -1232,13 +1286,16 @@ function draw() {
         ctx.fillText('封印中', z.x, z.y + 4);
     });
 
+    // 🍜 繪製帶有隨機角度的麵條牆
     noodles.forEach(nd => {
         ctx.save();
+        ctx.translate(nd.x, nd.y);
+        ctx.rotate(nd.angle);
         ctx.fillStyle = '#F1C40F';
         ctx.strokeStyle = '#D35400';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.roundRect(nd.x, nd.y, nd.width, nd.height, 8);
+        ctx.roundRect(-nd.width / 2, -nd.height / 2, nd.width, nd.height, 8);
         ctx.fill();
         ctx.stroke();
         ctx.restore();
