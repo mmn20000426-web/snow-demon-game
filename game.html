@@ -298,10 +298,10 @@
         <div id="achievement-section">
             <h3>🏆 遊戲成就解鎖</h3>
             <div class="achievement-grid">
-                <div id="ach-1" class="achievement-card">🔒 獲勝成就<br><small>(無開控制台)</small></div>
-                <div id="ach-2" class="achievement-card">🔒 失敗成就<br><small>(無開控制台)</small></div>
-                <div id="ach-3" class="achievement-card">🔒 開控制台獲勝成就</div>
-                <div id="ach-4" class="achievement-card">🔒 無傷獲勝<br><small>(無開控制台)</small></div>
+                <div id="ach-1" class="achievement-card">🔒 沒壞朋友<br><small>(無開控制台)</small></div>
+                <div id="ach-2" class="achievement-card">🔒 慘遭赤石<br><small>(無開控制台)</small></div>
+                <div id="ach-3" class="achievement-card">🔒 低調的黑客</div>
+                <div id="ach-4" class="achievement-card">🔒 怕不是開掛了(存疑)<br><small>(無開控制台)</small></div>
             </div>
         </div>
 
@@ -338,7 +338,7 @@
                         <input type="checkbox" id="sw-pudding" checked onchange="markConsoleUsed()">
                     </div>
                     <div class="toggle-item">
-                        <label for="sw-laser">黃色雷射 (4.5s)</label>
+                        <label for="sw-laser">黃色雷射 (9s)</label>
                         <input type="checkbox" id="sw-laser" checked onchange="markConsoleUsed()">
                     </div>
                     <div class="toggle-item">
@@ -346,11 +346,11 @@
                         <input type="checkbox" id="sw-burger" checked onchange="markConsoleUsed()">
                     </div>
                     <div class="toggle-item">
-                        <label for="sw-noodle">麵條牆 (6s)</label>
+                        <label for="sw-noodle">麵條牆 (7s)</label>
                         <input type="checkbox" id="sw-noodle" checked onchange="markConsoleUsed()">
                     </div>
                     <div class="toggle-item">
-                        <label for="sw-medkit">急救包 Medkit (4s)</label>
+                        <label for="sw-medkit">急救包 Medkit (2.5s)</label>
                         <input type="checkbox" id="sw-medkit" checked onchange="markConsoleUsed()">
                     </div>
                 </div>
@@ -366,7 +366,7 @@
                 </div>
 
                 <div class="panel-section">
-                    <h4>除錯功能</h4>
+                    <h4>愛赤石喝梟的德川</h4>
                     <button class="panel-btn danger" style="width: 100%;" onclick="clearEnemyBullets()">清空敵方子彈</button>
                 </div>
             </div>
@@ -454,8 +454,8 @@ const player = {
     baseSpeed: 6,
     speed: 6,
     radius: 9,
-    hp: 20,
-    maxHp: 20,
+    hp: 25,
+    maxHp: 25,
     invincibleFrame: 0
 };
 
@@ -466,8 +466,8 @@ const boss = {
     height: 70,
     dir: 1,
     speed: 2.5,
-    hp: 90,
-    maxHp: 90
+    hp: 80,
+    maxHp: 80
 };
 
 const shields = [];
@@ -1345,7 +1345,7 @@ function draw() {
         ctx.fillStyle = '#FFD700';
         ctx.font = 'bold 26px "Microsoft JhengHei", Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('點擊螢幕開始遊戲', canvas.width / 2, canvas.height / 2);
+        ctx.fillText('點擊螢幕開始赤石', canvas.width / 2, canvas.height / 2);
         ctx.textAlign = 'left';
         drawAllNPCs();
         return;
