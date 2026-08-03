@@ -20,11 +20,17 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            overflow: hidden;
+            overflow-x: hidden;
             position: relative;
+            padding-bottom: 20px;
         }
         
-        /* 📱 遊戲區域：自動按手機螢幕寬度等比例縮放 */
+        h2 {
+            margin: 10px 0;
+            color: #FFD700;
+        }
+
+        /* 📱 遊戲區域 */
         #game-container {
             position: relative;
             box-shadow: 0 0 25px rgba(255, 215, 0, 0.4);
@@ -45,7 +51,7 @@
             height: auto;
         }
 
-        /* 📱 整合至遊戲區的手機快捷按鈕區 */
+        /* 📱 觸控按鈕區 */
         .mobile-touch-bar {
             width: 100%;
             background: #1a1c23;
@@ -81,7 +87,46 @@
             box-shadow: none;
         }
         
-        /* 🎛️ 修正：彈窗式控制面板，方便手機關閉 */
+        /* 🏆 成就顯示區 */
+        #achievement-section {
+            width: min(90vw, 650px);
+            background: #1a1c23;
+            border: 2px solid #FFD700;
+            border-radius: 8px;
+            margin-top: 15px;
+            padding: 12px;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+        }
+        #achievement-section h3 {
+            margin: 0 0 10px 0;
+            color: #FFD700;
+            text-align: center;
+            font-size: 16px;
+        }
+        .achievement-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        .achievement-card {
+            background: #252836;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 8px;
+            text-align: center;
+            font-size: 12px;
+            color: #888;
+            transition: all 0.3s ease;
+        }
+        .achievement-card.unlocked {
+            background: #1e3799;
+            border-color: #60a5fa;
+            color: #fff;
+            font-weight: bold;
+            box-shadow: 0 0 8px rgba(96, 165, 250, 0.5);
+        }
+
+        /* 🎛️ 控制面板遮罩 */
         #control-panel-overlay {
             display: none;
             position: fixed;
@@ -198,6 +243,16 @@
     </div>
 </div>
 
+<div id="achievement-section">
+    <h3>🏆 遊戲成就解鎖</h3>
+    <div class="achievement-grid">
+        <div id="ach-1" class="achievement-card">🔒 獲勝成就<br><small>(無開控制台)</small></div>
+        <div id="ach-2" class="achievement-card">🔒 失敗成就<br><small>(無開控制台)</small></div>
+        <div id="ach-3" class="achievement-card">🔒 開控制台獲勝成就</div>
+        <div id="ach-4" class="achievement-card">🔒 無傷獲勝<br><small>(無開控制台)</small></div>
+    </div>
+</div>
+
 <div id="control-panel-overlay">
     <div id="control-panel">
         <button class="close-panel-btn" onclick="toggleControlPanel()">❌ 關閉控制台</button>
@@ -292,6 +347,8 @@ const imgPlayer = new Image(); imgPlayer.src = 'player.jpg';
 const imgBoss = new Image(); imgBoss.src = 'boss.jpg';
 const imgGameOver = new Image(); imgGameOver.src = 'boss.jpg';  
 const imgWin = new Image(); imgWin.src = 'win.jpg';
+const imgWin2 = new Image(); imgWin2.src = 'win2.jpg';
+const imgWin3 = new Image(); imgWin3.src = 'win3.jpg';
 const imgShield = new Image(); imgShield.src = 'shield.jpg';
 const imgMedkit = new Image(); imgMedkit.src = 'medkit.jpg';
 
@@ -311,6 +368,16 @@ let score = 0;
 let gameOver = false;
 let gameWin = false;
 let frameCount = 0;
+
+// 🏆 成就與控制台監控變數
+let hasUsedConsole = false;
+let tookDamage = false;
+const unlockedAchievements = {
+    ach1: false, // 獲勝成就(無開控制台)
+    ach2: false, // 失敗成就(無開控制台)
+    ach3: false, // 開控制台獲勝成就
+    ach4: false  // 無傷獲勝(無開控制台)
+};
 
 const keys = {};
 
@@ -360,20 +427,35 @@ let isLaserActive = false;
 let laserDuration = 0;
 
 function toggleControlPanel() {
+    hasUsedConsole = true; // 標記為使用過控制台
     const overlay = document.getElementById('control-panel-overlay');
     overlay.style.display = (overlay.style.display === 'none' || overlay.style.display === '') ? 'flex' : 'none';
 }
 
+function unlockAchievement(id, key, text) {
+    if (!unlockedAchievements[key]) {
+        unlockedAchievements[key] = true;
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.add('unlocked');
+            el.innerHTML = `🏆 ${text}`;
+        }
+    }
+}
+
 function healPlayerToFull() {
+    hasUsedConsole = true;
     player.hp = player.maxHp;
 }
 
 function triggerLaser() {
+    hasUsedConsole = true;
     isLaserActive = true;
     laserDuration = 45;
 }
 
 function triggerNoodles() {
+    hasUsedConsole = true;
     for (let i = 0; i < 4; i++) {
         noodles.push({
             x: Math.random() * (playArea.width - 40) + playArea.left + 20,
@@ -386,6 +468,7 @@ function triggerNoodles() {
 }
 
 function triggerBurger() {
+    hasUsedConsole = true;
     const startX = boss.x + boss.width / 2;
     const startY = boss.y + boss.height;
     const targetX = Math.random() * (playArea.width - 80) + playArea.left + 40;
@@ -407,6 +490,7 @@ function triggerBurger() {
 }
 
 function triggerMedkit() {
+    hasUsedConsole = true;
     medkits.push({
         x: Math.random() * (playArea.width - 35) + playArea.left + 15,
         y: -30,
@@ -417,6 +501,7 @@ function triggerMedkit() {
 }
 
 function clearEnemyBullets() {
+    hasUsedConsole = true;
     enemyBullets.length = 0;
 }
 
@@ -548,7 +633,11 @@ function playBGM() {
     }
 }
 
-function playLoseBGM() {
+function triggerGameOver() {
+    gameOver = true;
+    if (!hasUsedConsole) {
+        unlockAchievement('ach-2', 'ach2', '失敗成就');
+    }
     bgm.pause();
     bgm.currentTime = 0;
     loseBgm.currentTime = 0;
@@ -558,6 +647,17 @@ function playLoseBGM() {
 function triggerWin() {
     boss.hp = 0;
     gameWin = true;
+
+    // 🏆 判斷獲勝成就
+    if (hasUsedConsole) {
+        unlockAchievement('ach-3', 'ach3', '開控制台獲勝成就');
+    } else {
+        unlockAchievement('ach-1', 'ach1', '獲勝成就');
+        if (!tookDamage) {
+            unlockAchievement('ach-4', 'ach4', '無傷獲勝成就');
+        }
+    }
+
     bgm.pause();
     bgm.currentTime = 0;
     winBgm.currentTime = 0;
@@ -639,6 +739,9 @@ function resetGame() {
     gameWin = false;
     frameCount = 0;
     shieldCooldown = 0;
+    hasUsedConsole = false;
+    tookDamage = false;
+
     enemyBullets.length = 0;
     playerBullets.length = 0;
     shields.length = 0;
@@ -808,10 +911,10 @@ function update() {
             playerCenterY > boss.y + boss.height
         ) {
             player.hp -= 2;
+            tookDamage = true; // 標記受傷
             player.invincibleFrame = 30;
             if (player.hp <= 0) {
-                gameOver = true;
-                playLoseBGM();
+                triggerGameOver();
                 return;
             }
         }
@@ -857,9 +960,10 @@ function update() {
         let hitPlayer = false;
         if (player.invincibleFrame === 0 && dist < p.radius + player.radius) {
             player.hp -= 2;
+            tookDamage = true; // 標記受傷
             player.invincibleFrame = 30;
             hitPlayer = true;
-            if (player.hp <= 0) { gameOver = true; playLoseBGM(); return; }
+            if (player.hp <= 0) { triggerGameOver(); return; }
         }
 
         if (hitPlayer || p.y >= canvas.height - 20 || p.x <= playArea.left || p.x >= playArea.right) {
@@ -901,10 +1005,11 @@ function update() {
         if (player.invincibleFrame === 0) {
             if (checkPointRectCollision(playerCenterX, playerCenterY, eb)) {
                 player.hp -= (eb.damage || 1);
+                tookDamage = true; // 標記受傷
                 player.invincibleFrame = 30;
                 enemyBullets.splice(i, 1);
 
-                if (player.hp <= 0) { gameOver = true; playLoseBGM(); return; }
+                if (player.hp <= 0) { triggerGameOver(); return; }
                 continue;
             }
         }
@@ -1176,18 +1281,30 @@ function draw() {
 
     drawAllNPCs();
 
+    // 🏆 獲勝畫面繪製邏輯
     if (gameWin) {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.88)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        if (imgWin.complete && imgWin.naturalWidth !== 0) {
-            ctx.drawImage(imgWin, (canvas.width - 240) / 2, 120, 240, 200);
+        let winText = "恭喜你成功打敗雪之惡魔(喜)";
+        let winImage = imgWin;
+
+        if (hasUsedConsole) {
+            winText = "你作弊了，對吧?";
+            winImage = imgWin2;
+        } else if (!tookDamage) {
+            winText = "恭喜你獲得先輩超人的愛慕";
+            winImage = imgWin3;
+        }
+
+        if (winImage.complete && winImage.naturalWidth !== 0) {
+            ctx.drawImage(winImage, (canvas.width - 240) / 2, 120, 240, 200);
         }
 
         ctx.fillStyle = '#2ed573';
-        ctx.font = 'bold 28px "Microsoft JhengHei", Arial';
+        ctx.font = 'bold 26px "Microsoft JhengHei", Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('恭喜你成功打敗雪之惡魔(喜)', canvas.width / 2, 390);
+        ctx.fillText(winText, canvas.width / 2, 390);
 
         ctx.fillStyle = '#ffffff';
         ctx.font = '16px "Microsoft JhengHei", Arial';
