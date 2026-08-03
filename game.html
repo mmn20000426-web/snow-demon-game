@@ -11,7 +11,7 @@
         }
         body {
             margin: 0;
-            padding: 10px;
+            padding: 5px;
             background-color: #111;
             color: #fff;
             font-family: Arial, sans-serif;
@@ -24,9 +24,10 @@
         }
         
         h2 {
-            margin: 5px 0 15px 0;
+            margin: 2px 0 8px 0;
             color: #FFD700;
             text-align: center;
+            font-size: 20px;
         }
 
         /* 🖥️ 電腦版 / 📱 手機版 響應式整體外框 */
@@ -34,21 +35,21 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 15px;
+            gap: 10px;
             width: 100%;
-            max-width: 1050px;
+            max-width: 1000px;
         }
 
         /* 📱 遊戲區域 */
         #game-container {
             position: relative;
-            box-shadow: 0 0 25px rgba(255, 215, 0, 0.4);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
             border-radius: 8px;
             overflow: hidden;
             display: flex;
             flex-direction: column;
             align-items: center;
-            width: min(100vw - 20px, 650px);
+            width: min(100vw - 20px, 600px);
             flex-shrink: 0;
         }
 
@@ -66,19 +67,19 @@
             background: #1a1c23;
             display: flex;
             justify-content: space-around;
-            padding: 10px;
+            padding: 6px;
             border-top: 2px solid #333a4e;
         }
         .mobile-btn {
             background: #1e90ff;
             color: white;
             border: none;
-            padding: 10px 18px;
-            font-size: 14px;
+            padding: 8px 14px;
+            font-size: 13px;
             font-weight: bold;
             border-radius: 6px;
             cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            box-shadow: 0 3px 5px rgba(0,0,0,0.3);
             transition: background 0.2s, transform 0.1s;
             user-select: none;
             touch-action: manipulation;
@@ -100,36 +101,36 @@
         #sidebar-container {
             display: flex;
             flex-direction: column;
-            gap: 15px;
-            width: min(100vw - 20px, 650px);
+            gap: 8px;
+            width: min(100vw - 20px, 600px);
         }
         
-        /* 🏆 成就顯示區 */
+        /* 🏆 成就顯示區 (高度緊湊化) */
         #achievement-section {
             background: #1a1c23;
             border: 2px solid #FFD700;
-            border-radius: 8px;
-            padding: 12px;
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+            border-radius: 6px;
+            padding: 8px 10px;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
         }
         #achievement-section h3 {
-            margin: 0 0 10px 0;
+            margin: 0 0 6px 0;
             color: #FFD700;
             text-align: center;
-            font-size: 16px;
+            font-size: 14px;
         }
         .achievement-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
+            gap: 6px;
         }
         .achievement-card {
             background: #252836;
             border: 1px solid #444;
-            border-radius: 6px;
-            padding: 8px;
+            border-radius: 4px;
+            padding: 4px;
             text-align: center;
-            font-size: 12px;
+            font-size: 11px;
             color: #888;
             transition: all 0.3s ease;
         }
@@ -138,75 +139,76 @@
             border-color: #60a5fa;
             color: #fff;
             font-weight: bold;
-            box-shadow: 0 0 8px rgba(96, 165, 250, 0.5);
+            box-shadow: 0 0 6px rgba(96, 165, 250, 0.5);
         }
 
-        /* 🎛️ 控制面板 */
+        /* 🎛️ 控制面板 (緊湊化) */
         #control-panel {
             background: rgba(30, 34, 48, 0.98);
             border: 2px solid #ff4757;
-            border-radius: 8px;
-            padding: 15px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.8);
+            border-radius: 6px;
+            padding: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.8);
+            max-height: 480px;
+            overflow-y: auto;
         }
         #control-panel h3 {
             margin-top: 0;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             color: #FFD700;
             border-bottom: 1px solid #333a4e;
-            padding-bottom: 6px;
+            padding-bottom: 4px;
             text-align: center;
-            font-size: 16px;
+            font-size: 14px;
         }
         .close-panel-btn {
             width: 100%;
             background: #ff4757;
             color: white;
             border: none;
-            padding: 8px;
-            border-radius: 6px;
-            font-size: 14px;
+            padding: 6px;
+            border-radius: 4px;
+            font-size: 13px;
             font-weight: bold;
             cursor: pointer;
-            margin-bottom: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            margin-bottom: 8px;
         }
         .panel-section {
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
         .panel-section h4 {
-            margin: 6px 0;
+            margin: 4px 0;
             color: #2ed573;
-            font-size: 13px;
+            font-size: 12px;
         }
         .toggle-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 6px;
-            font-size: 12px;
+            margin-bottom: 3px;
+            font-size: 11px;
         }
         .toggle-item label {
             cursor: pointer;
         }
         .toggle-item input[type="checkbox"] {
             cursor: pointer;
-            width: 18px;
-            height: 18px;
+            width: 15px;
+            height: 15px;
         }
         .btn-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 6px;
+            gap: 4px;
         }
         .panel-btn {
             background: #3498db;
             color: white;
             border: none;
-            padding: 8px;
+            padding: 5px;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: bold;
             transition: background 0.2s;
         }
@@ -229,7 +231,7 @@
                 justify-content: center;
             }
             #sidebar-container {
-                width: 340px;
+                width: 320px;
             }
             .close-panel-btn {
                 display: none;
@@ -259,9 +261,8 @@
             }
             #control-panel {
                 width: 90%;
-                max-width: 340px;
-                max-height: 85vh;
-                overflow-y: auto;
+                max-width: 320px;
+                max-height: 80vh;
             }
             .close-panel-btn {
                 display: block;
@@ -269,10 +270,10 @@
         }
 
         .instructions {
-            margin-top: 8px;
+            margin-top: 4px;
             text-align: center;
             color: #aaa;
-            font-size: 12px;
+            font-size: 11px;
         }
     </style>
 </head>
@@ -282,7 +283,7 @@
 
 <div id="main-wrapper">
     <div id="game-container">
-        <canvas id="gameCanvas" width="650" height="650"></canvas>
+        <canvas id="gameCanvas" width="600" height="600"></canvas>
         
         <div class="mobile-touch-bar">
             <button id="btn-shield-ui" class="mobile-btn" onclick="trySummonShield()">🛡️ 護盾 [U]</button>
@@ -310,44 +311,44 @@
                     <h4>⚡ 即時狀態控制</h4>
                     <div class="toggle-item">
                         <label for="sw-pause-boss" style="color:#ff6b6b; font-weight:bold;">⏸️ 暫停 Boss 移動/攻擊</label>
-                        <input type="checkbox" id="sw-pause-boss">
+                        <input type="checkbox" id="sw-pause-boss" onchange="markConsoleUsed()">
                     </div>
-                    <button class="panel-btn success" style="width: 100%; margin-top: 5px;" onclick="healPlayerToFull()">💚 補滿玩家血量</button>
+                    <button class="panel-btn success" style="width: 100%; margin-top: 4px;" onclick="healPlayerToFull()">💚 補滿玩家血量</button>
                 </div>
 
                 <div class="panel-section">
                     <h4>自動釋放開關</h4>
                     <div class="toggle-item">
                         <label for="sw-orange">橘色扇形彈幕</label>
-                        <input type="checkbox" id="sw-orange" checked>
+                        <input type="checkbox" id="sw-orange" checked onchange="markConsoleUsed()">
                     </div>
                     <div class="toggle-item">
                         <label for="sw-green">綠色長條彈幕</label>
-                        <input type="checkbox" id="sw-green" checked>
+                        <input type="checkbox" id="sw-green" checked onchange="markConsoleUsed()">
                     </div>
                     <div class="toggle-item">
                         <label for="sw-brown">咖啡圓形彈幕</label>
-                        <input type="checkbox" id="sw-brown" checked>
+                        <input type="checkbox" id="sw-brown" checked onchange="markConsoleUsed()">
                     </div>
                     <div class="toggle-item">
                         <label for="sw-pudding">追蹤布丁（封印區）</label>
-                        <input type="checkbox" id="sw-pudding" checked>
+                        <input type="checkbox" id="sw-pudding" checked onchange="markConsoleUsed()">
                     </div>
                     <div class="toggle-item">
                         <label for="sw-laser">黃色雷射 (4.5s)</label>
-                        <input type="checkbox" id="sw-laser" checked>
+                        <input type="checkbox" id="sw-laser" checked onchange="markConsoleUsed()">
                     </div>
                     <div class="toggle-item">
                         <label for="sw-burger">漢堡肉 (6s)</label>
-                        <input type="checkbox" id="sw-burger" checked>
+                        <input type="checkbox" id="sw-burger" checked onchange="markConsoleUsed()">
                     </div>
                     <div class="toggle-item">
                         <label for="sw-noodle">麵條牆 (6s)</label>
-                        <input type="checkbox" id="sw-noodle" checked>
+                        <input type="checkbox" id="sw-noodle" checked onchange="markConsoleUsed()">
                     </div>
                     <div class="toggle-item">
                         <label for="sw-medkit">急救包 Medkit (4s)</label>
-                        <input type="checkbox" id="sw-medkit" checked>
+                        <input type="checkbox" id="sw-medkit" checked onchange="markConsoleUsed()">
                     </div>
                 </div>
 
@@ -391,9 +392,9 @@ const win2Bgm = document.getElementById('win2Bgm');
 const win3Bgm = document.getElementById('win3Bgm');
 
 const playArea = {
-    left: 100,
-    right: 550,
-    width: 450
+    left: 90,
+    right: 510,
+    width: 420
 };
 
 // --- 載入圖片 ---
@@ -428,10 +429,10 @@ let frameCount = 0;
 let hasUsedConsole = false;
 let tookDamage = false;
 const unlockedAchievements = {
-    ach1: false, // 獲勝成就(無開控制台)
-    ach2: false, // 失敗成就(無開控制台)
-    ach3: false, // 開控制台獲勝成就
-    ach4: false  // 無傷獲勝(無開控制台)
+    ach1: false,
+    ach2: false,
+    ach3: false,
+    ach4: false
 };
 
 const keys = {};
@@ -442,26 +443,26 @@ let isNpc3SpecialText = false;
 let shieldCooldown = 0;
 const SHIELD_CD_MAX = 120; 
 
-const bossWallY = 140;
+const bossWallY = 130;
 
 const player = {
-    x: playArea.left + playArea.width / 2 - 25,
-    y: canvas.height - 90,
-    width: 50,
-    height: 50,
+    x: playArea.left + playArea.width / 2 - 22,
+    y: canvas.height - 80,
+    width: 44,
+    height: 44,
     baseSpeed: 6,
     speed: 6,
-    radius: 10,
+    radius: 9,
     hp: 15,
     maxHp: 15,
     invincibleFrame: 0
 };
 
 const boss = {
-    x: playArea.left + playArea.width / 2 - 40,
-    y: 40,
-    width: 80,
-    height: 80,
+    x: playArea.left + playArea.width / 2 - 35,
+    y: 35,
+    width: 70,
+    height: 70,
     dir: 1,
     speed: 2.5,
     hp: 75,
@@ -481,8 +482,13 @@ let laserTimer = 0;
 let isLaserActive = false;
 let laserDuration = 0;
 
-function toggleControlPanel() {
+// 🛠️ 標記使用了控制台功能
+function markConsoleUsed() {
     hasUsedConsole = true;
+}
+
+function toggleControlPanel() {
+    // 🛠️ 單純開啟控制台不再直接判定為作弊
     const overlay = document.getElementById('control-panel-overlay');
     const isMobile = window.innerWidth < 850;
 
@@ -512,32 +518,32 @@ function unlockAchievement(id, key, text) {
 }
 
 function healPlayerToFull() {
-    hasUsedConsole = true;
+    markConsoleUsed();
     player.hp = player.maxHp;
 }
 
 function triggerLaser() {
-    hasUsedConsole = true;
+    markConsoleUsed();
     isLaserActive = true;
     laserDuration = 45;
 }
 
 function triggerNoodles() {
-    hasUsedConsole = true;
+    markConsoleUsed();
     for (let i = 0; i < 4; i++) {
         noodles.push({
             x: Math.random() * (playArea.width - 60) + playArea.left + 30,
             y: Math.random() * (canvas.height - 300) + 180,
             width: 18,
             height: 75,
-            angle: Math.random() * Math.PI, // 🍜 丟出時角度隨機
+            angle: Math.random() * Math.PI,
             duration: 180
         });
     }
 }
 
 function triggerBurger() {
-    hasUsedConsole = true;
+    markConsoleUsed();
     const startX = boss.x + boss.width / 2;
     const startY = boss.y + boss.height;
     const targetX = Math.random() * (playArea.width - 80) + playArea.left + 40;
@@ -559,7 +565,7 @@ function triggerBurger() {
 }
 
 function triggerMedkit() {
-    hasUsedConsole = true;
+    markConsoleUsed();
     medkits.push({
         x: Math.random() * (playArea.width - 35) + playArea.left + 15,
         y: -30,
@@ -570,7 +576,7 @@ function triggerMedkit() {
 }
 
 function clearEnemyBullets() {
-    hasUsedConsole = true;
+    markConsoleUsed();
     enemyBullets.length = 0;
 }
 
@@ -716,7 +722,6 @@ function playBGM() {
 
 function triggerGameOver() {
     gameOver = true;
-    // 🛠️ 穩定觸發失敗成就判定
     if (!hasUsedConsole) {
         unlockAchievement('ach-2', 'ach2', '失敗成就');
     }
@@ -755,7 +760,12 @@ function startGame() {
     }
 }
 
+// 🛠️ 監聽按鍵事件 (加入 preventDefault 防止 Space 滾動頁面)
 window.addEventListener('keydown', e => {
+    if (e.code === 'Space' || e.key === ' ') {
+        e.preventDefault();
+    }
+
     startGame();
     keys[e.key] = true;
     keys[e.code] = true;
@@ -829,7 +839,6 @@ function resetGame() {
     hasUsedConsole = false;
     tookDamage = false;
 
-    // 🧹 重置控制面板效果開關狀態
     resetControlPanelSwitches();
 
     enemyBullets.length = 0;
@@ -844,12 +853,12 @@ function resetGame() {
     isLaserActive = false;
     laserDuration = 0;
 
-    player.x = playArea.left + playArea.width / 2 - 25;
-    player.y = canvas.height - 90;
+    player.x = playArea.left + playArea.width / 2 - 22;
+    player.y = canvas.height - 80;
     player.hp = player.maxHp;
     player.invincibleFrame = 0;
     player.speed = player.baseSpeed;
-    boss.x = playArea.left + playArea.width / 2 - 40;
+    boss.x = playArea.left + playArea.width / 2 - 35;
     boss.hp = boss.maxHp;
 
     isNpc3SpecialText = false;
@@ -889,7 +898,6 @@ function checkAABBCollision(rect1, rect2) {
     );
 }
 
-// 🍜 點與旋轉麵條牆的碰撞檢測
 function checkPointNoodleCollision(px, py, nd) {
     const cx = nd.x;
     const cy = nd.y;
@@ -964,7 +972,6 @@ function update() {
     player.x = Math.max(playArea.left, Math.min(playArea.right - player.width, player.x));
     player.y = Math.max(bossWallY, Math.min(canvas.height - player.height, player.y));
 
-    // 🍜 麵條阻擋玩家移動
     for (let nd of noodles) {
         if (checkPointNoodleCollision(player.x + player.width / 2, player.y + player.height / 2, nd)) {
             player.x = oldX;
@@ -1078,7 +1085,6 @@ function update() {
         }
     }
 
-    // 🍜 玩家子彈移動 & 麵條阻擋判定
     for (let i = playerBullets.length - 1; i >= 0; i--) {
         const pb = playerBullets[i];
         pb.y += pb.vy;
@@ -1104,7 +1110,6 @@ function update() {
         if (pb.y < -10) playerBullets.splice(i, 1);
     }
 
-    // 🍜 敵方子彈移動 & 麵條阻擋判定
     for (let i = enemyBullets.length - 1; i >= 0; i--) {
         const eb = enemyBullets[i];
         eb.x += eb.vx;
@@ -1181,43 +1186,43 @@ function drawSpeechBubble(text, x, y, alignLeft = true) {
     ctx.save();
     ctx.font = 'bold 11px "Microsoft JhengHei", Arial';
     const textWidth = ctx.measureText(text).width;
-    const padding = 6;
+    const padding = 5;
     const bubbleW = textWidth + padding * 2;
-    const bubbleH = 22;
+    const bubbleH = 20;
     
-    let bubbleX = alignLeft ? x + 10 : x - bubbleW - 10;
+    let bubbleX = alignLeft ? x + 8 : x - bubbleW - 8;
     let bubbleY = y - 10;
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
     ctx.strokeStyle = '#333';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.roundRect(bubbleX, bubbleY, bubbleW, bubbleH, 5);
+    ctx.roundRect(bubbleX, bubbleY, bubbleW, bubbleH, 4);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle = '#111';
     ctx.textAlign = 'center';
-    ctx.fillText(text, bubbleX + bubbleW / 2, bubbleY + 15);
+    ctx.fillText(text, bubbleX + bubbleW / 2, bubbleY + 14);
     ctx.restore();
 }
 
 function drawAllNPCs() {
-    const npcW = 55;
-    const npcH = 55;
-    const leftX = 20;
-    const rightX = 575;
+    const npcW = 50;
+    const npcH = 50;
+    const leftX = 15;
+    const rightX = 535;
 
     const leftPositions = [
-        { key: 'npc1', y: 120 },
-        { key: 'npc2', y: 280 },
-        { key: 'npc3', y: 440 }
+        { key: 'npc1', y: 110 },
+        { key: 'npc2', y: 260 },
+        { key: 'npc3', y: 410 }
     ];
 
     const rightPositions = [
-        { key: 'bnpc1', y: 120 },
-        { key: 'bnpc2', y: 280 },
-        { key: 'bnpc3', y: 440 }
+        { key: 'bnpc1', y: 110 },
+        { key: 'bnpc2', y: 260 },
+        { key: 'bnpc3', y: 410 }
     ];
 
     leftPositions.forEach(item => {
@@ -1229,7 +1234,7 @@ function drawAllNPCs() {
         const img = npcImages[item.key];
         if (img.complete && img.naturalWidth !== 0) ctx.drawImage(img, leftX, item.y, npcW, npcH);
         else { ctx.fillStyle = '#9b59b6'; ctx.fillRect(leftX, item.y, npcW, npcH); }
-        drawSpeechBubble(text, leftX + npcW / 2, item.y - 12, true);
+        drawSpeechBubble(text, leftX + npcW / 2, item.y - 10, true);
     });
 
     rightPositions.forEach(item => {
@@ -1240,7 +1245,7 @@ function drawAllNPCs() {
         const img = npcImages[item.key];
         if (img.complete && img.naturalWidth !== 0) ctx.drawImage(img, rightX, item.y, npcW, npcH);
         else { ctx.fillStyle = '#e67e22'; ctx.fillRect(rightX, item.y, npcW, npcH); }
-        drawSpeechBubble(text, rightX + npcW / 2, item.y - 12, false);
+        drawSpeechBubble(text, rightX + npcW / 2, item.y - 10, false);
     });
 }
 
@@ -1286,7 +1291,6 @@ function draw() {
         ctx.fillText('封印中', z.x, z.y + 4);
     });
 
-    // 🍜 繪製帶有隨機角度的麵條牆
     noodles.forEach(nd => {
         ctx.save();
         ctx.translate(nd.x, nd.y);
@@ -1416,18 +1420,16 @@ function draw() {
 
     drawAllNPCs();
 
-    // ⏸️ 控制台暫停提示
     if (isPausedForPanel && !gameOver && !gameWin) {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#FFD700';
-        ctx.font = 'bold 28px "Microsoft JhengHei", Arial';
+        ctx.font = 'bold 26px "Microsoft JhengHei", Arial';
         ctx.textAlign = 'center';
         ctx.fillText('⏸️ 遊戲暫停中 (控制台開啟)', canvas.width / 2, canvas.height / 2);
         ctx.textAlign = 'left';
     }
 
-    // 🏆 獲勝畫面繪製邏輯
     if (gameWin) {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.88)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -1463,17 +1465,17 @@ function draw() {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         if (imgGameOver.complete && imgGameOver.naturalWidth !== 0) {
-            ctx.drawImage(imgGameOver, (canvas.width - 380) / 2, 40, 380, 380);
+            ctx.drawImage(imgGameOver, (canvas.width - 360) / 2, 40, 360, 360);
         }
 
         ctx.fillStyle = '#ff4757';
         ctx.font = 'bold 30px "Microsoft JhengHei", Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('被無盡的厥力(悲)', canvas.width / 2, 460);
+        ctx.fillText('被無盡的厥力(悲)', canvas.width / 2, 450);
 
         ctx.fillStyle = '#ffffff';
         ctx.font = '16px "Microsoft JhengHei", Arial';
-        ctx.fillText('點擊重新開始', canvas.width / 2, 510);
+        ctx.fillText('點擊重新開始', canvas.width / 2, 500);
         ctx.textAlign = 'left';
     }
 }
