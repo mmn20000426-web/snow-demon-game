@@ -49,6 +49,7 @@
             align-items: center;
             width: min(100vw - 20px, 600px);
             flex-shrink: 0;
+            z-index: 1;
         }
 
         canvas {
@@ -135,6 +136,16 @@
             color: #fff;
             font-weight: bold;
             box-shadow: 0 0 6px rgba(96, 165, 250, 0.5);
+        }
+
+        #control-panel-overlay {
+            display: none;
+            pointer-events: none;
+        }
+
+        #control-panel-overlay.active {
+            display: flex !important;
+            pointer-events: auto !important;
         }
 
         #control-panel {
@@ -231,6 +242,7 @@
             }
             #control-panel-overlay {
                 display: block !important;
+                pointer-events: auto !important;
                 position: static !important;
                 width: auto !important;
                 height: auto !important;
@@ -240,7 +252,6 @@
 
         @media (max-width: 849px) {
             #control-panel-overlay {
-                display: none;
                 position: fixed;
                 top: 0;
                 left: 0;
@@ -364,7 +375,7 @@
 </div>
 
 <div class="instructions">
-    <p>🎮 拖曳畫面移動 | [U] 護盾 | [I] 開關控制台 (開控制台時遊戲暫停)</p>
+    <p>🎮 拖曳畫面移動 | [U] 護盾 | [I] 開關控制台 | [P] 隱藏秒殺技能</p>
 </div>
 
 <audio id="bgm" src="bgm.mp3" loop preload="auto"></audio>
@@ -472,8 +483,12 @@ let laserTimer = 0;
 let isLaserActive = false;
 let laserDuration = 0;
 
+let isResettingSwitches = false;
+
 function markConsoleUsed() {
-    hasUsedConsole = true;
+    if (!isResettingSwitches) {
+        hasUsedConsole = true;
+    }
 }
 
 function toggleControlPanel() {
@@ -481,9 +496,14 @@ function toggleControlPanel() {
     const isMobile = window.innerWidth < 850;
 
     if (isMobile) {
-        const isHidden = (overlay.style.display === 'none' || overlay.style.display === '');
-        overlay.style.display = isHidden ? 'flex' : 'none';
-        isPausedForPanel = isHidden;
+        const isActive = overlay.classList.contains('active');
+        if (isActive) {
+            overlay.classList.remove('active');
+            isPausedForPanel = false;
+        } else {
+            overlay.classList.add('active');
+            isPausedForPanel = true;
+        }
     } else {
         isPausedForPanel = !isPausedForPanel;
     }
@@ -569,6 +589,7 @@ function clearEnemyBullets() {
 }
 
 function resetControlPanelSwitches() {
+    isResettingSwitches = true;
     document.getElementById('sw-pause-boss').checked = false;
     document.getElementById('sw-orange').checked = true;
     document.getElementById('sw-green').checked = true;
@@ -578,6 +599,7 @@ function resetControlPanelSwitches() {
     document.getElementById('sw-burger').checked = true;
     document.getElementById('sw-noodle').checked = true;
     document.getElementById('sw-medkit').checked = true;
+    isResettingSwitches = false;
 }
 
 function spawnEnemyBullets() {
@@ -827,6 +849,9 @@ function resetGame() {
     tookDamage = false;
 
     resetControlPanelSwitches();
+
+    const overlay = document.getElementById('control-panel-overlay');
+    if (overlay) overlay.classList.remove('active');
 
     enemyBullets.length = 0;
     playerBullets.length = 0;
