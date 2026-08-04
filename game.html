@@ -21,7 +21,7 @@
         canvas { background: #0d0f18; display: block; cursor: crosshair; width: 100%; height: auto; }
         
         .mobile-touch-bar {
-            width: 100%; background: #1a1c23; display: flex; justify-content: space-around;
+            width: 100%; background: #1a1c23; display: flex; justify-space-around;
             padding: 6px; border-top: 2px solid #333a4e;
         }
         
@@ -130,6 +130,7 @@
                 <div id="ach-2" class="achievement-card">🔒 被無限餵石力(悲)<br><small>(無開控制台)</small></div>
                 <div id="ach-3" class="achievement-card">🔒 低調的黑客</div>
                 <div id="ach-4" class="achievement-card">🔒 怕不是桂口巴<br><small>(無開控制台)</small></div>
+                <div id="ach-5" class="achievement-card" style="grid-column: span 2;">🔒 一轉攻勢<br><small>(剩 1 HP 擊敗 Boss)</small></div>
             </div>
         </div>
 
@@ -208,6 +209,7 @@ const imgGameOver = new Image(); imgGameOver.src = 'boss.jpg';
 const imgWin = new Image(); imgWin.src = 'win.jpg';
 const imgWin2 = new Image(); imgWin2.src = 'win2.jpg';
 const imgWin3 = new Image(); imgWin3.src = 'win3.jpg';
+const imgWin4 = new Image(); imgWin4.src = 'win4.jpg';
 const imgShield = new Image(); imgShield.src = 'shield.jpg';
 const imgMedkit = new Image(); imgMedkit.src = 'medkit.jpg';
 
@@ -231,7 +233,7 @@ let frameCount = 0;
 
 let hasUsedConsole = false;
 let tookDamage = false;
-const unlockedAchievements = { ach1: false, ach2: false, ach3: false, ach4: false };
+const unlockedAchievements = { ach1: false, ach2: false, ach3: false, ach4: false, ach5: false };
 
 const keys = {};
 
@@ -252,8 +254,9 @@ let qteLaserActive = false;
 let qteLaserTimer = 0;
 let qteNpc3Shield = null;
 let bnpcDefeated = false;
-let npc3Defeated = false; // QTE 後 NPC3 消失標誌
+let npc3Defeated = false; 
 let qteSuccessMsgTimer = 0;
+let is1HpWinMode = false;
 
 const player = {
     x: playArea.left + playArea.width / 2 - 22,
@@ -268,7 +271,7 @@ const player = {
     invincibleFrame: 0
 };
 
-// 讓 Boss 各階段寬高維持一樣且偏扁 (寬 120 x 高 70)
+// Boss 基礎資料（尺寸會在圖片載入後自動改為與原圖相同比例與體積）
 const boss = {
     x: playArea.left + playArea.width / 2 - 60,
     y: 35,
@@ -279,6 +282,20 @@ const boss = {
     hp: 50,
     maxHp: 50
 };
+
+// Boss 圖片載入後將尺寸設定為原圖比例/大小
+function updateBossDimensions(img) {
+    if (img && img.complete && img.naturalWidth !== 0) {
+        const maxWidth = 160;
+        const scale = maxWidth / img.naturalWidth;
+        boss.width = img.naturalWidth * scale;
+        boss.height = img.naturalHeight * scale;
+    }
+}
+
+imgBoss1.onload = () => updateBossDimensions(imgBoss1);
+imgBoss2.onload = () => { if (bossPhase === 2) updateBossDimensions(imgBoss2); };
+imgBoss3.onload = () => { if (bossPhase === 3) updateBossDimensions(imgBoss3); };
 
 const shields = [];
 const enemyBullets = [];  
@@ -350,7 +367,7 @@ function triggerNoodles() {
         noodles.push({
             x: Math.random() * (playArea.width - 60) + playArea.left + 30,
             y: Math.random() * (canvas.height - 300) + 180,
-            width: 18, height: 75, angle: Math.random() * Math.PI, duration: 360
+            width: 18, height: 75, angle: Math.random() * Math.PI, duration: 240 // 改為 4 秒 (240 幀)
         });
     }
 }
@@ -490,7 +507,7 @@ function spawnEnemyBullets() {
             noodles.push({
                 x: Math.random() * (playArea.width - 60) + playArea.left + 30,
                 y: Math.random() * (canvas.height - 300) + 180,
-                width: 18, height: 75, angle: Math.random() * Math.PI, duration: 360
+                width: 18, height: 75, angle: Math.random() * Math.PI, duration: 240 // 改為 4 秒 (240 幀)
             });
         }
     }
@@ -550,9 +567,10 @@ function triggerQTESuccess() {
     qteSuccessMsgTimer = 120;
 
     setTimeout(() => {
-        bnpcDefeated = true; // BNPC 消失
-        npc3Defeated = true; // NPC3 亦在此時消失
-        bossPhase = 3;       // 進入第三階段
+        bnpcDefeated = true;
+        npc3Defeated = true;
+        bossPhase = 3;
+        updateBossDimensions(imgBoss3);
         boss.hp = 30;
         boss.maxHp = 30;
         qteLaserActive = false;
@@ -575,7 +593,6 @@ function firePlayerBullet() {
 }
 
 function trySummonShield() {
-    // 進入第三階段後，護盾功能消失
     if (bossPhase === 3) return;
     if (shieldCooldown > 0 || isPausedForPanel || qteActive) return;
 
@@ -609,7 +626,12 @@ function triggerWin() {
     gameWin = true;
     bgm.pause(); bgm.currentTime = 0;
 
-    if (hasUsedConsole) {
+    // 判斷是否滿足 1 HP 擊敗 Boss 條件（一轉攻勢）
+    if (player.hp === 1) {
+        is1HpWinMode = true;
+        unlockAchievement('ach-5', 'ach5', '一轉攻勢');
+        win3Bgm.currentTime = 0; win3Bgm.play().catch(() => {});
+    } else if (hasUsedConsole) {
         unlockAchievement('ach-3', 'ach3', '低調的黑客');
         win2Bgm.currentTime = 0; win2Bgm.play().catch(() => {});
     } else if (!tookDamage) {
@@ -703,9 +725,11 @@ function updatePlayerPos(evt) {
 function resetGame() {
     score = 0; gameOver = false; gameWin = false;
     isPausedForPanel = false; frameCount = 0; shieldCooldown = 0;
-    hasUsedConsole = false; tookDamage = false;
+    hasUsedConsole = false; tookDamage = false; is1HpWinMode = false;
 
     bossPhase = 1;
+    updateBossDimensions(imgBoss1);
+
     qteActive = false;
     qteLaserActive = false;
     bnpcDefeated = false;
@@ -937,7 +961,7 @@ function update() {
         }
     }
 
-    // 玩家子彈傷害與三階段轉換
+    // 玩家子彈傷害與階段轉換
     for (let i = playerBullets.length - 1; i >= 0; i--) {
         const pb = playerBullets[i];
         pb.y += pb.vy;
@@ -954,6 +978,7 @@ function update() {
 
             if (bossPhase === 1 && boss.hp <= 10) {
                 bossPhase = 2;
+                updateBossDimensions(imgBoss2);
                 player.maxHp += 10;
                 player.hp += 10;
                 boss.hp = 80;
@@ -1058,7 +1083,6 @@ function drawAllNPCs() {
         drawSpeechBubble(text, leftX + npcW / 2, item.y - 10, true);
     });
 
-    // NPC3 在 QTE 後消失 (即 npc3Defeated 為 true 就不會繪製)
     if (!npc3Defeated && !qteLaserActive) {
         let text = isNpc3SpecialText ? "鴨蛋摸鴨蛋，牡蠣摸牡蠣" : "我修院加油啊!";
         const img = npcImages.npc3;
@@ -1159,7 +1183,6 @@ function drawQTEOverlay() {
 function drawQTEReflection() {
     if (qteLaserActive) {
         ctx.save();
-        // 超寬超扁的盾牌原型改為使用 shield.jpg 繪製
         if (qteNpc3Shield) {
             if (imgShield.complete && imgShield.naturalWidth !== 0) {
                 ctx.drawImage(imgShield, qteNpc3Shield.x, qteNpc3Shield.y, qteNpc3Shield.width, qteNpc3Shield.height);
@@ -1172,7 +1195,6 @@ function drawQTEReflection() {
             ctx.strokeRect(qteNpc3Shield.x, qteNpc3Shield.y, qteNpc3Shield.width, qteNpc3Shield.height);
         }
 
-        // 反彈黃色雷射光束
         ctx.fillStyle = 'rgba(255, 215, 0, 0.9)';
         ctx.fillRect(playArea.left, 0, playArea.width, qteNpc3Shield.y);
 
@@ -1362,7 +1384,10 @@ function draw() {
         let winText = "恭喜你成功打敗雪之惡魔(喜)";
         let winImage = imgWin;
 
-        if (hasUsedConsole) {
+        if (is1HpWinMode) {
+            winText = "疑似想到了某個棒球選手";
+            winImage = imgWin4;
+        } else if (hasUsedConsole) {
             winText = "你作弊了，對吧?";
             winImage = imgWin2;
         } else if (!tookDamage) {
@@ -1375,7 +1400,7 @@ function draw() {
         }
 
         ctx.fillStyle = '#2ed573';
-        ctx.font = 'bold 26px "Microsoft JhengHei", Arial';
+        ctx.font = 'bold 24px "Microsoft JhengHei", Arial';
         ctx.textAlign = 'center';
         ctx.fillText(winText, canvas.width / 2, 390);
 
