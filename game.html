@@ -19,10 +19,24 @@
             align-items: center; width: min(100vw - 20px, 600px); flex-shrink: 0; z-index: 1;
         }
         canvas { background: #0d0f18; display: block; cursor: crosshair; width: 100%; height: auto; }
+        
         .mobile-touch-bar {
             width: 100%; background: #1a1c23; display: flex; justify-content: space-around;
             padding: 6px; border-top: 2px solid #333a4e;
         }
+        
+        /* 手機 QTE 專用按鈕區 */
+        #qte-mobile-bar {
+            display: none; width: 100%; background: #2b1111; padding: 8px;
+            border-top: 2px solid #ff4757; justify-content: center; gap: 6px; flex-wrap: wrap;
+        }
+        #qte-mobile-bar.active { display: flex !important; }
+        .qte-btn {
+            background: #ff4757; color: white; border: 2px solid #fff; padding: 10px 16px;
+            font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer;
+            box-shadow: 0 4px 0 #b32b37; active { transform: translateY(4px); box-shadow: none; }
+        }
+
         .mobile-btn {
             background: #1e90ff; color: white; border: none; padding: 8px 14px;
             font-size: 13px; font-weight: bold; border-radius: 6px; cursor: pointer;
@@ -32,6 +46,7 @@
         .mobile-btn:active { transform: scale(0.95); }
         .mobile-btn.control-btn { background: #ff4757; }
         .mobile-btn:disabled { background: #555 !important; color: #aaa; cursor: not-allowed; box-shadow: none; }
+        
         #sidebar-container { display: flex; flex-direction: column; gap: 8px; width: min(100vw - 20px, 600px); }
         #achievement-section {
             background: #1a1c23; border: 2px solid #FFD700; border-radius: 6px;
@@ -88,9 +103,21 @@
 <div id="main-wrapper">
     <div id="game-container">
         <canvas id="gameCanvas" width="600" height="600"></canvas>
-        <div class="mobile-touch-bar">
+        
+        <div id="normal-touch-bar" class="mobile-touch-bar">
             <button id="btn-shield-ui" class="mobile-btn" onclick="trySummonShield()">🛡️ 護盾 [U]</button>
             <button class="mobile-btn control-btn" onclick="toggleControlPanel()">🎛️ 控制台 [I]</button>
+        </div>
+
+        <div id="qte-mobile-bar">
+            <button class="qte-btn" onclick="handleQTEInput('W')">W</button>
+            <button class="qte-btn" onclick="handleQTEInput('A')">A</button>
+            <button class="qte-btn" onclick="handleQTEInput('S')">S</button>
+            <button class="qte-btn" onclick="handleQTEInput('D')">D</button>
+            <button class="qte-btn" onclick="handleQTEInput('J')">J</button>
+            <button class="qte-btn" onclick="handleQTEInput('K')">K</button>
+            <button class="qte-btn" onclick="handleQTEInput('L')">L</button>
+            <button class="qte-btn" onclick="handleQTEInput('U')">U</button>
         </div>
     </div>
 
@@ -212,21 +239,19 @@ let isNpc3SpecialText = false;
 
 let shieldCooldown = 0;
 const SHIELD_CD_MAX = 120; 
-const bossWallY = 130;
+const bossWallY = 150;
 
-// 階段變數
+// 階段與 QTE 狀態
 let bossPhase = 1;
-
-// QTE 變數
 let qteActive = false;
-let qteTimer = 0; // 240 幀 (4秒)
+let qteTimer = 0; 
 let qteSequence = [];
 let qteIndex = 0;
-let qteResultText = '';
 let qteLaserActive = false;
 let qteLaserTimer = 0;
 let qteNpc3Shield = null;
 let bnpcDefeated = false;
+let qteSuccessMsgTimer = 0;
 
 const player = {
     x: playArea.left + playArea.width / 2 - 22,
@@ -241,11 +266,12 @@ const player = {
     invincibleFrame: 0
 };
 
+// 放大 Boss 尺寸 (從 70x70 放大至 100x100)
 const boss = {
-    x: playArea.left + playArea.width / 2 - 35,
-    y: 35,
-    width: 70,
-    height: 70,
+    x: playArea.left + playArea.width / 2 - 50,
+    y: 30,
+    width: 100,
+    height: 100,
     dir: 1,
     speed: 2.5,
     hp: 50,
@@ -322,10 +348,7 @@ function triggerNoodles() {
         noodles.push({
             x: Math.random() * (playArea.width - 60) + playArea.left + 30,
             y: Math.random() * (canvas.height - 300) + 180,
-            width: 18,
-            height: 75,
-            angle: Math.random() * Math.PI,
-            duration: 360
+            width: 18, height: 75, angle: Math.random() * Math.PI, duration: 360
         });
     }
 }
@@ -372,11 +395,10 @@ function resetControlPanelSwitches() {
     isResettingSwitches = false;
 }
 
-// 根據當前階段獲取彈幕頻率 multiplier (數值越小發射越快) 與 冷卻時間 multiplier
 function getPhaseMultipliers() {
-    if (bossPhase === 1) return { freq: 1 / 0.75, cd: 1.0 };          // 0.75 倍射速
-    if (bossPhase === 2) return { freq: 1 / 1.3, cd: 0.75 };         // 1.3 倍射速，0.75 倍冷卻
-    if (bossPhase === 3) return { freq: 1 / 0.65, cd: 1.5 };         // 0.65 倍射速，1.5 倍冷卻
+    if (bossPhase === 1) return { freq: 1 / 0.75, cd: 1.0 };
+    if (bossPhase === 2) return { freq: 1 / 1.3, cd: 0.75 };
+    if (bossPhase === 3) return { freq: 1 / 0.65, cd: 1.5 };
     return { freq: 1.0, cd: 1.0 };
 }
 
@@ -481,12 +503,14 @@ function spawnEnemyBullets() {
 
 function startQTE() {
     qteActive = true;
-    qteTimer = 240; // 4 秒 (60 FPS)
+    qteTimer = 240; 
     qteIndex = 0;
-    qteResultText = '';
     qteLaserActive = false;
     qteNpc3Shield = null;
     enemyBullets.length = 0;
+
+    document.getElementById('qte-mobile-bar').classList.add('active');
+    document.getElementById('normal-touch-bar').style.display = 'none';
 
     const availableKeys = ['W', 'A', 'S', 'D', 'J', 'K', 'L', 'U'];
     qteSequence = [];
@@ -503,8 +527,9 @@ function handleQTEInput(pressedKey) {
     if (pressedKey.toUpperCase() === expected) {
         qteIndex++;
         if (qteIndex >= qteSequence.length) {
-            // QTE 成功！
             qteActive = false;
+            document.getElementById('qte-mobile-bar').classList.remove('active');
+            document.getElementById('normal-touch-bar').style.display = 'flex';
             triggerQTESuccess();
         }
     }
@@ -512,27 +537,30 @@ function handleQTEInput(pressedKey) {
 
 function triggerQTESuccess() {
     qteNpc3Shield = {
-        x: playArea.left + 10,
+        x: playArea.left + 5,
         y: player.y - 40,
-        width: playArea.width - 20,
-        height: 12
+        width: playArea.width - 10,
+        height: 10
     };
 
     qteLaserActive = true;
-    qteLaserTimer = 90; // 播放 1.5 秒反彈動畫
+    qteLaserTimer = 90; 
+    qteSuccessMsgTimer = 120;
 
     setTimeout(() => {
-        bnpcDefeated = true; // bnpc1、bnpc2 消失
+        bnpcDefeated = true; // BNPC 消失
         bossPhase = 3;
         boss.hp = 30;
         boss.maxHp = 30;
         qteLaserActive = false;
-        qteNpc3Shield = null;
+        qteNpc3Shield = null; // NPC3 也隨著 QTE 盾牌結束一起消失
     }, 1500);
 }
 
 function triggerQTEFail() {
     qteActive = false;
+    document.getElementById('qte-mobile-bar').classList.remove('active');
+    document.getElementById('normal-touch-bar').style.display = 'flex';
     triggerGameOver();
 }
 
@@ -676,6 +704,10 @@ function resetGame() {
     qteActive = false;
     qteLaserActive = false;
     bnpcDefeated = false;
+    qteSuccessMsgTimer = 0;
+
+    document.getElementById('qte-mobile-bar').classList.remove('active');
+    document.getElementById('normal-touch-bar').style.display = 'flex';
 
     resetControlPanelSwitches();
 
@@ -694,7 +726,7 @@ function resetGame() {
     player.invincibleFrame = 0;
     player.speed = player.baseSpeed;
 
-    boss.x = playArea.left + playArea.width / 2 - 35;
+    boss.x = playArea.left + playArea.width / 2 - 50;
     boss.hp = 50; boss.maxHp = 50;
 
     isNpc3SpecialText = false;
@@ -750,6 +782,7 @@ function update() {
     score++;
 
     if (shieldCooldown > 0) shieldCooldown--;
+    if (qteSuccessMsgTimer > 0) qteSuccessMsgTimer--;
 
     const shieldBtn = document.getElementById('btn-shield-ui');
     if (shieldBtn) {
@@ -764,7 +797,6 @@ function update() {
 
     if (player.invincibleFrame > 0) player.invincibleFrame--;
 
-    // QTE 倒數計時處理
     if (qteActive) {
         qteTimer--;
         if (qteTimer <= 0) {
@@ -896,7 +928,7 @@ function update() {
         }
     }
 
-    // 玩家子彈與 Boss 傷害判斷（含階段轉換）
+    // 玩家子彈傷害與三階段轉換
     for (let i = playerBullets.length - 1; i >= 0; i--) {
         const pb = playerBullets[i];
         pb.y += pb.vy;
@@ -911,7 +943,6 @@ function update() {
             boss.hp--;
             playerBullets.splice(i, 1);
 
-            // 階段一 ➔ 階段二 (血量 <= 10)
             if (bossPhase === 1 && boss.hp <= 10) {
                 bossPhase = 2;
                 player.maxHp += 10;
@@ -919,12 +950,10 @@ function update() {
                 boss.hp = 80;
                 boss.maxHp = 80;
             }
-            // 階段二 ➔ 觸發 QTE (血量 <= 0)
             else if (bossPhase === 2 && boss.hp <= 0) {
                 boss.hp = 0;
                 startQTE();
             }
-            // 階段三 ➔ 獲勝 (血量 <= 0)
             else if (bossPhase === 3 && boss.hp <= 0) {
                 triggerWin();
                 return;
@@ -1004,29 +1033,16 @@ function drawAllNPCs() {
     const npcW = 50; const npcH = 50;
     let leftX = 15; let rightX = 535;
 
-    // 二階段 QTE 期間，bnpc1 與 bnpc2 站在戰場左右兩側
-    if (qteActive) {
-        leftX = playArea.left + 10;
-        rightX = playArea.right - 60;
-    }
-
     const leftPositions = [
         { key: 'npc1', y: 110 },
-        { key: 'npc2', y: 260 },
-        { key: 'npc3', y: 410 }
+        { key: 'npc2', y: 260 }
     ];
 
-    const rightPositions = [
-        { key: 'bnpc1', y: 110 },
-        { key: 'bnpc2', y: 260 },
-        { key: 'bnpc3', y: 410 }
-    ];
-
+    // 一般情況下繪製左側 NPC1, NPC2, 以及 NPC3 (當 QTE 或盾牌啟用時/未過期)
     leftPositions.forEach(item => {
         let text = "我修院加油啊!";
         if (gameOver) text = "哎呀!!害死我力";
         else if (gameWin) text = "好結局";
-        else if (item.key === 'npc3' && isNpc3SpecialText) text = "鴨蛋摸鴨蛋，牡蠣摸牡蠣";
 
         const img = npcImages[item.key];
         if (img.complete && img.naturalWidth !== 0) ctx.drawImage(img, leftX, item.y, npcW, npcH);
@@ -1034,11 +1050,40 @@ function drawAllNPCs() {
         drawSpeechBubble(text, leftX + npcW / 2, item.y - 10, true);
     });
 
-    if (!bnpcDefeated) {
+    // NPC3 在未消失前顯示於左側
+    if (!bnpcDefeated && !qteLaserActive) {
+        let text = isNpc3SpecialText ? "鴨蛋摸鴨蛋，牡蠣摸牡蠣" : "我修院加油啊!";
+        const img = npcImages.npc3;
+        if (img.complete && img.naturalWidth !== 0) ctx.drawImage(img, leftX, 410, npcW, npcH);
+        else { ctx.fillStyle = '#9b59b6'; ctx.fillRect(leftX, 410, npcW, npcH); }
+        drawSpeechBubble(text, leftX + npcW / 2, 410 - 10, true);
+    }
+
+    // BNPC1 與 BNPC2 在 QTE 期間直接站在 Boss 的左右兩側
+    if (qteActive && !bnpcDefeated) {
+        const bnpc1X = boss.x - 60;
+        const bnpc2X = boss.x + boss.width + 10;
+        const bnpcY = boss.y + 25;
+
+        const img1 = npcImages.bnpc1;
+        if (img1.complete && img1.naturalWidth !== 0) ctx.drawImage(img1, bnpc1X, bnpcY, npcW, npcH);
+        else { ctx.fillStyle = '#e67e22'; ctx.fillRect(bnpc1X, bnpcY, npcW, npcH); }
+        drawSpeechBubble("一庫走", bnpc1X + npcW / 2, bnpcY - 10, false);
+
+        const img2 = npcImages.bnpc2;
+        if (img2.complete && img2.naturalWidth !== 0) ctx.drawImage(img2, bnpc2X, bnpcY, npcW, npcH);
+        else { ctx.fillStyle = '#e67e22'; ctx.fillRect(bnpc2X, bnpcY, npcW, npcH); }
+        drawSpeechBubble("一庫走", bnpc2X + npcW / 2, bnpcY - 10, true);
+    } else if (!bnpcDefeated) {
+        // 非 QTE 期間，BNPC 按原位置排列
+        const rightPositions = [
+            { key: 'bnpc1', y: 110 },
+            { key: 'bnpc2', y: 260 },
+            { key: 'bnpc3', y: 410 }
+        ];
         rightPositions.forEach(item => {
             let text = "淳平君加油啊!";
-            if (qteActive && (item.key === 'bnpc1' || item.key === 'bnpc2')) text = "看招！秒殺雷射！";
-            else if (gameOver) text = "哎呀!!害死我力";
+            if (gameOver) text = "哎呀!!害死我力";
             else if (gameWin) text = "壞結局";
 
             const img = npcImages[item.key];
@@ -1053,22 +1098,39 @@ function drawQTEOverlay() {
     if (!qteActive) return;
 
     ctx.save();
-    ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+    // 全螢幕警報紅暈
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.15)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 召喚預備黃色雷射視覺
-    ctx.fillStyle = 'rgba(255, 230, 0, 0.5)';
-    ctx.fillRect(playArea.left, 0, playArea.width, canvas.height);
+    // 黃色秒殺雷射預備/蓄力視覺效果
+    const bnpc1X = boss.x - 35;
+    const bnpc2X = boss.x + boss.width + 35;
+    
+    // 預告光束蓄力
+    ctx.fillStyle = 'rgba(255, 230, 0, 0.25)';
+    ctx.fillRect(playArea.left, boss.y + boss.height, playArea.width, canvas.height);
+
+    ctx.fillStyle = 'rgba(255, 255, 0, 0.4)';
+    ctx.fillRect(bnpc1X - 10, boss.y + 75, 20, canvas.height);
+    ctx.fillRect(bnpc2X - 10, boss.y + 75, 20, canvas.height);
+
+    // 預警紅線
+    ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath();
+    ctx.moveTo(playArea.left, canvas.height - 100); ctx.lineTo(playArea.right, canvas.height - 100);
+    ctx.stroke();
 
     ctx.fillStyle = '#FFD700';
-    ctx.font = 'bold 24px Arial';
+    ctx.font = 'bold 22px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText(`⚠️ QTE 警告！按對 4 個按鍵發動 NPC3 盾牌！`, canvas.width / 2, 180);
+    ctx.fillText(`⚠️ 點擊或按下 4 個對應按鍵以發動盾牌！`, canvas.width / 2, 190);
 
     const secondsLeft = (qteTimer / 60).toFixed(1);
     ctx.fillStyle = '#ff4757';
-    ctx.font = 'bold 28px Arial';
-    ctx.fillText(`剩餘時間: ${secondsLeft}s`, canvas.width / 2, 220);
+    ctx.font = 'bold 26px Arial';
+    ctx.fillText(`剩餘時間: ${secondsLeft}s`, canvas.width / 2, 225);
 
     // 繪製 QTE 按鍵序列
     const startX = canvas.width / 2 - (qteSequence.length * 30);
@@ -1094,33 +1156,36 @@ function drawQTEOverlay() {
 }
 
 function drawQTEReflection() {
-    if (!qteLaserActive) return;
+    if (qteLaserActive) {
+        ctx.save();
+        // 繪製扁平 NPC3 盾牌
+        if (qteNpc3Shield) {
+            ctx.fillStyle = '#60a5fa';
+            ctx.fillRect(qteNpc3Shield.x, qteNpc3Shield.y, qteNpc3Shield.width, qteNpc3Shield.height);
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(qteNpc3Shield.x, qteNpc3Shield.y, qteNpc3Shield.width, qteNpc3Shield.height);
 
-    ctx.save();
-    // 繪製扁平 NPC3 盾牌
-    if (qteNpc3Shield) {
-        ctx.fillStyle = '#60a5fa';
-        ctx.fillRect(qteNpc3Shield.x, qteNpc3Shield.y, qteNpc3Shield.width, qteNpc3Shield.height);
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(qteNpc3Shield.x, qteNpc3Shield.y, qteNpc3Shield.width, qteNpc3Shield.height);
-
-        // 繪製 NPC3 貼圖於盾牌中央
-        if (npcImages.npc3.complete && npcImages.npc3.naturalWidth !== 0) {
-            ctx.drawImage(npcImages.npc3, canvas.width / 2 - 20, qteNpc3Shield.y - 15, 40, 40);
+            if (npcImages.npc3.complete && npcImages.npc3.naturalWidth !== 0) {
+                ctx.drawImage(npcImages.npc3, canvas.width / 2 - 20, qteNpc3Shield.y - 25, 40, 25);
+            }
         }
+
+        // 繪製反彈黃色雷射光束
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.9)';
+        ctx.fillRect(playArea.left, 0, playArea.width, qteNpc3Shield.y);
+
+        ctx.restore();
     }
 
-    // 繪製反彈黃色雷射光束
-    ctx.fillStyle = 'rgba(255, 215, 0, 0.9)';
-    ctx.fillRect(playArea.left, 0, playArea.width, qteNpc3Shield.y);
-
-    ctx.fillStyle = '#00FFFF';
-    ctx.font = 'bold 32px "Microsoft JhengHei", Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('⚡ 成功完美反彈！擊退 BNPC！', canvas.width / 2, canvas.height / 2);
-
-    ctx.restore();
+    if (qteSuccessMsgTimer > 0) {
+        ctx.save();
+        ctx.fillStyle = '#FFD700';
+        ctx.font = 'bold 22px "Microsoft JhengHei", Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('boss已經力竭，快點一轉攻勢吧(喜)', canvas.width / 2, canvas.height / 2);
+        ctx.restore();
+    }
 }
 
 function draw() {
@@ -1199,7 +1264,6 @@ function draw() {
         return;
     }
 
-    // 根據階段選取對應 Boss 圖片
     let currentBossImg = imgBoss1;
     if (bossPhase === 2) currentBossImg = imgBoss2;
     if (bossPhase === 3) currentBossImg = imgBoss3;
@@ -1264,7 +1328,6 @@ function draw() {
         ctx.fill(); ctx.stroke(); ctx.restore();
     });
 
-    // UI 資訊顯示
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 18px Arial';
     ctx.fillText(`SCORE: ${score}`, playArea.left + 15, 30);
