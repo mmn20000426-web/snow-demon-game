@@ -21,7 +21,7 @@
         canvas { background: #0d0f18; display: block; cursor: crosshair; width: 100%; height: auto; }
         
         .mobile-touch-bar {
-            width: 100%; background: #1a1c23; display: flex; justify-space-around;
+            width: 100%; background: #1a1c23; display: flex; justify-content: space-around;
             padding: 6px; border-top: 2px solid #333a4e;
         }
         
@@ -188,6 +188,7 @@
 <audio id="winBgm" src="win.mp3" preload="auto"></audio>
 <audio id="win2Bgm" src="win2.mp3" preload="auto"></audio>
 <audio id="win3Bgm" src="win3.mp3" preload="auto"></audio>
+<audio id="win4Bgm" src="win4.mp3" preload="auto"></audio>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
@@ -198,6 +199,7 @@ const loseBgm = document.getElementById('loseBgm');
 const winBgm = document.getElementById('winBgm');
 const win2Bgm = document.getElementById('win2Bgm');
 const win3Bgm = document.getElementById('win3Bgm');
+const win4Bgm = document.getElementById('win4Bgm');
 
 const playArea = { left: 90, right: 510, width: 420 };
 
@@ -271,7 +273,7 @@ const player = {
     invincibleFrame: 0
 };
 
-// Boss 基礎資料（尺寸會在圖片載入後自動改為與原圖相同比例與體積）
+// Boss 基礎資料
 const boss = {
     x: playArea.left + playArea.width / 2 - 60,
     y: 35,
@@ -367,7 +369,7 @@ function triggerNoodles() {
         noodles.push({
             x: Math.random() * (playArea.width - 60) + playArea.left + 30,
             y: Math.random() * (canvas.height - 300) + 180,
-            width: 18, height: 75, angle: Math.random() * Math.PI, duration: 240 // 改為 4 秒 (240 幀)
+            width: 18, height: 75, angle: Math.random() * Math.PI, duration: 240
         });
     }
 }
@@ -507,7 +509,7 @@ function spawnEnemyBullets() {
             noodles.push({
                 x: Math.random() * (playArea.width - 60) + playArea.left + 30,
                 y: Math.random() * (canvas.height - 300) + 180,
-                width: 18, height: 75, angle: Math.random() * Math.PI, duration: 240 // 改為 4 秒 (240 幀)
+                width: 18, height: 75, angle: Math.random() * Math.PI, duration: 240
             });
         }
     }
@@ -626,11 +628,11 @@ function triggerWin() {
     gameWin = true;
     bgm.pause(); bgm.currentTime = 0;
 
-    // 判斷是否滿足 1 HP 擊敗 Boss 條件（一轉攻勢）
+    // 判斷 1 HP 擊敗 Boss 條件（一轉攻勢）
     if (player.hp === 1) {
         is1HpWinMode = true;
         unlockAchievement('ach-5', 'ach5', '一轉攻勢');
-        win3Bgm.currentTime = 0; win3Bgm.play().catch(() => {});
+        win4Bgm.currentTime = 0; win4Bgm.play().catch(() => {}); // 播放 win4.mp3
     } else if (hasUsedConsole) {
         unlockAchievement('ach-3', 'ach3', '低調的黑客');
         win2Bgm.currentTime = 0; win2Bgm.play().catch(() => {});
@@ -766,6 +768,7 @@ function resetGame() {
     winBgm.pause(); winBgm.currentTime = 0;
     win2Bgm.pause(); win2Bgm.currentTime = 0;
     win3Bgm.pause(); win3Bgm.currentTime = 0;
+    win4Bgm.pause(); win4Bgm.currentTime = 0; // 重置 win4 音樂
     bgm.currentTime = 0;
     playBGM();
 }
@@ -961,7 +964,6 @@ function update() {
         }
     }
 
-    // 玩家子彈傷害與階段轉換
     for (let i = playerBullets.length - 1; i >= 0; i--) {
         const pb = playerBullets[i];
         pb.y += pb.vy;
@@ -1395,18 +1397,21 @@ function draw() {
             winImage = imgWin3;
         }
 
+        // 獲勝圖片放大一倍 (原本 240x200 放大為 480x400)
+        const winW = 480;
+        const winH = 400;
         if (winImage.complete && winImage.naturalWidth !== 0) {
-            ctx.drawImage(winImage, (canvas.width - 240) / 2, 120, 240, 200);
+            ctx.drawImage(winImage, (canvas.width - winW) / 2, 20, winW, winH);
         }
 
         ctx.fillStyle = '#2ed573';
         ctx.font = 'bold 24px "Microsoft JhengHei", Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(winText, canvas.width / 2, 390);
+        ctx.fillText(winText, canvas.width / 2, 470);
 
         ctx.fillStyle = '#ffffff';
         ctx.font = '16px "Microsoft JhengHei", Arial';
-        ctx.fillText('點擊重新開始', canvas.width / 2, 440);
+        ctx.fillText('點擊重新開始被雷普', canvas.width / 2, 520);
         ctx.textAlign = 'left';
     }
 
@@ -1414,18 +1419,20 @@ function draw() {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.92)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+        // 失敗圖片放大兩倍 (原本 360x360 放大為 720x720，畫布寬度 600px 自動切齊邊緣)
+        const loseSize = 520;
         if (imgGameOver.complete && imgGameOver.naturalWidth !== 0) {
-            ctx.drawImage(imgGameOver, (canvas.width - 360) / 2, 40, 360, 360);
+            ctx.drawImage(imgGameOver, (canvas.width - loseSize) / 2, 10, loseSize, loseSize);
         }
 
         ctx.fillStyle = '#ff4757';
-        ctx.font = 'bold 30px "Microsoft JhengHei", Arial';
+        ctx.font = 'bold 28px "Microsoft JhengHei", Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('被無盡的厥力(悲)', canvas.width / 2, 450);
+        ctx.fillText('被無盡的厥力(悲)', canvas.width / 2, 545);
 
         ctx.fillStyle = '#ffffff';
         ctx.font = '16px "Microsoft JhengHei", Arial';
-        ctx.fillText('點擊重新開始', canvas.width / 2, 500);
+        ctx.fillText('點擊重新開始被雷普', canvas.width / 2, 580);
         ctx.textAlign = 'left';
     }
 }
