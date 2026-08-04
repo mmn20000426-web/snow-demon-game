@@ -34,8 +34,9 @@
         .qte-btn {
             background: #ff4757; color: white; border: 2px solid #fff; padding: 10px 16px;
             font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer;
-            box-shadow: 0 4px 0 #b32b37; active { transform: translateY(4px); box-shadow: none; }
+            box-shadow: 0 4px 0 #b32b37;
         }
+        .qte-btn:active { transform: translateY(4px); box-shadow: none; }
 
         .mobile-btn {
             background: #1e90ff; color: white; border: none; padding: 8px 14px;
@@ -251,6 +252,7 @@ let qteLaserActive = false;
 let qteLaserTimer = 0;
 let qteNpc3Shield = null;
 let bnpcDefeated = false;
+let npc3Defeated = false; // QTE 後 NPC3 消失標誌
 let qteSuccessMsgTimer = 0;
 
 const player = {
@@ -266,12 +268,12 @@ const player = {
     invincibleFrame: 0
 };
 
-// 放大 Boss 尺寸 (從 70x70 放大至 100x100)
+// 讓 Boss 各階段寬高維持一樣且偏扁 (寬 120 x 高 70)
 const boss = {
-    x: playArea.left + playArea.width / 2 - 50,
-    y: 30,
-    width: 100,
-    height: 100,
+    x: playArea.left + playArea.width / 2 - 60,
+    y: 35,
+    width: 120,
+    height: 70,
     dir: 1,
     speed: 2.5,
     hp: 50,
@@ -540,7 +542,7 @@ function triggerQTESuccess() {
         x: playArea.left + 5,
         y: player.y - 40,
         width: playArea.width - 10,
-        height: 10
+        height: 20
     };
 
     qteLaserActive = true;
@@ -549,11 +551,12 @@ function triggerQTESuccess() {
 
     setTimeout(() => {
         bnpcDefeated = true; // BNPC 消失
-        bossPhase = 3;
+        npc3Defeated = true; // NPC3 亦在此時消失
+        bossPhase = 3;       // 進入第三階段
         boss.hp = 30;
         boss.maxHp = 30;
         qteLaserActive = false;
-        qteNpc3Shield = null; // NPC3 也隨著 QTE 盾牌結束一起消失
+        qteNpc3Shield = null;
     }, 1500);
 }
 
@@ -572,6 +575,8 @@ function firePlayerBullet() {
 }
 
 function trySummonShield() {
+    // 進入第三階段後，護盾功能消失
+    if (bossPhase === 3) return;
     if (shieldCooldown > 0 || isPausedForPanel || qteActive) return;
 
     shields.push({
@@ -704,6 +709,7 @@ function resetGame() {
     qteActive = false;
     qteLaserActive = false;
     bnpcDefeated = false;
+    npc3Defeated = false;
     qteSuccessMsgTimer = 0;
 
     document.getElementById('qte-mobile-bar').classList.remove('active');
@@ -726,7 +732,7 @@ function resetGame() {
     player.invincibleFrame = 0;
     player.speed = player.baseSpeed;
 
-    boss.x = playArea.left + playArea.width / 2 - 50;
+    boss.x = playArea.left + playArea.width / 2 - 60;
     boss.hp = 50; boss.maxHp = 50;
 
     isNpc3SpecialText = false;
@@ -786,7 +792,10 @@ function update() {
 
     const shieldBtn = document.getElementById('btn-shield-ui');
     if (shieldBtn) {
-        if (shieldCooldown > 0) {
+        if (bossPhase === 3) {
+            shieldBtn.innerText = `🛡️ 護盾已封印`;
+            shieldBtn.disabled = true;
+        } else if (shieldCooldown > 0) {
             shieldBtn.innerText = `🛡️ 冷卻中 (${(shieldCooldown / 60).toFixed(1)}s)`;
             shieldBtn.disabled = true;
         } else {
@@ -1038,7 +1047,6 @@ function drawAllNPCs() {
         { key: 'npc2', y: 260 }
     ];
 
-    // 一般情況下繪製左側 NPC1, NPC2, 以及 NPC3 (當 QTE 或盾牌啟用時/未過期)
     leftPositions.forEach(item => {
         let text = "我修院加油啊!";
         if (gameOver) text = "哎呀!!害死我力";
@@ -1050,8 +1058,8 @@ function drawAllNPCs() {
         drawSpeechBubble(text, leftX + npcW / 2, item.y - 10, true);
     });
 
-    // NPC3 在未消失前顯示於左側
-    if (!bnpcDefeated && !qteLaserActive) {
+    // NPC3 在 QTE 後消失 (即 npc3Defeated 為 true 就不會繪製)
+    if (!npc3Defeated && !qteLaserActive) {
         let text = isNpc3SpecialText ? "鴨蛋摸鴨蛋，牡蠣摸牡蠣" : "我修院加油啊!";
         const img = npcImages.npc3;
         if (img.complete && img.naturalWidth !== 0) ctx.drawImage(img, leftX, 410, npcW, npcH);
@@ -1059,11 +1067,10 @@ function drawAllNPCs() {
         drawSpeechBubble(text, leftX + npcW / 2, 410 - 10, true);
     }
 
-    // BNPC1 與 BNPC2 在 QTE 期間直接站在 Boss 的左右兩側
     if (qteActive && !bnpcDefeated) {
         const bnpc1X = boss.x - 60;
         const bnpc2X = boss.x + boss.width + 10;
-        const bnpcY = boss.y + 25;
+        const bnpcY = boss.y + 10;
 
         const img1 = npcImages.bnpc1;
         if (img1.complete && img1.naturalWidth !== 0) ctx.drawImage(img1, bnpc1X, bnpcY, npcW, npcH);
@@ -1075,7 +1082,6 @@ function drawAllNPCs() {
         else { ctx.fillStyle = '#e67e22'; ctx.fillRect(bnpc2X, bnpcY, npcW, npcH); }
         drawSpeechBubble("一庫走", bnpc2X + npcW / 2, bnpcY - 10, true);
     } else if (!bnpcDefeated) {
-        // 非 QTE 期間，BNPC 按原位置排列
         const rightPositions = [
             { key: 'bnpc1', y: 110 },
             { key: 'bnpc2', y: 260 },
@@ -1098,23 +1104,19 @@ function drawQTEOverlay() {
     if (!qteActive) return;
 
     ctx.save();
-    // 全螢幕警報紅暈
     ctx.fillStyle = 'rgba(255, 0, 0, 0.15)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 黃色秒殺雷射預備/蓄力視覺效果
     const bnpc1X = boss.x - 35;
     const bnpc2X = boss.x + boss.width + 35;
     
-    // 預告光束蓄力
     ctx.fillStyle = 'rgba(255, 230, 0, 0.25)';
     ctx.fillRect(playArea.left, boss.y + boss.height, playArea.width, canvas.height);
 
     ctx.fillStyle = 'rgba(255, 255, 0, 0.4)';
-    ctx.fillRect(bnpc1X - 10, boss.y + 75, 20, canvas.height);
-    ctx.fillRect(bnpc2X - 10, boss.y + 75, 20, canvas.height);
+    ctx.fillRect(bnpc1X - 10, boss.y + 60, 20, canvas.height);
+    ctx.fillRect(bnpc2X - 10, boss.y + 60, 20, canvas.height);
 
-    // 預警紅線
     ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
     ctx.lineWidth = 2;
     ctx.setLineDash([6, 6]);
@@ -1132,7 +1134,6 @@ function drawQTEOverlay() {
     ctx.font = 'bold 26px Arial';
     ctx.fillText(`剩餘時間: ${secondsLeft}s`, canvas.width / 2, 225);
 
-    // 繪製 QTE 按鍵序列
     const startX = canvas.width / 2 - (qteSequence.length * 30);
     qteSequence.forEach((keyChar, idx) => {
         const boxX = startX + idx * 60;
@@ -1158,20 +1159,20 @@ function drawQTEOverlay() {
 function drawQTEReflection() {
     if (qteLaserActive) {
         ctx.save();
-        // 繪製扁平 NPC3 盾牌
+        // 超寬超扁的盾牌原型改為使用 shield.jpg 繪製
         if (qteNpc3Shield) {
-            ctx.fillStyle = '#60a5fa';
-            ctx.fillRect(qteNpc3Shield.x, qteNpc3Shield.y, qteNpc3Shield.width, qteNpc3Shield.height);
+            if (imgShield.complete && imgShield.naturalWidth !== 0) {
+                ctx.drawImage(imgShield, qteNpc3Shield.x, qteNpc3Shield.y, qteNpc3Shield.width, qteNpc3Shield.height);
+            } else {
+                ctx.fillStyle = '#1e90ff';
+                ctx.fillRect(qteNpc3Shield.x, qteNpc3Shield.y, qteNpc3Shield.width, qteNpc3Shield.height);
+            }
             ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 2;
             ctx.strokeRect(qteNpc3Shield.x, qteNpc3Shield.y, qteNpc3Shield.width, qteNpc3Shield.height);
-
-            if (npcImages.npc3.complete && npcImages.npc3.naturalWidth !== 0) {
-                ctx.drawImage(npcImages.npc3, canvas.width / 2 - 20, qteNpc3Shield.y - 25, 40, 25);
-            }
         }
 
-        // 繪製反彈黃色雷射光束
+        // 反彈黃色雷射光束
         ctx.fillStyle = 'rgba(255, 215, 0, 0.9)';
         ctx.fillRect(playArea.left, 0, playArea.width, qteNpc3Shield.y);
 
