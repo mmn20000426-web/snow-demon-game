@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>會員制的打架 - 三階段 BOSS 戰</title>
-    <title>會員制的打架</title>
     <style>
         * { box-sizing: border-box; touch-action: none; }
         body {
@@ -26,7 +25,13 @@
             padding: 6px; border-top: 2px solid #333a4e;
         }
 
-        /* 手機 QTE 專用按鈕區 */
+        /* PvP BOSS 專用技能欄位 */
+        #pvp-boss-bar {
+            display: none; width: 100%; background: #3a1111; padding: 6px;
+            border-top: 2px solid #ff4757; justify-content: space-around; flex-wrap: wrap; gap: 4px;
+        }
+        #pvp-boss-bar.active { display: flex !important; }
+
         #qte-mobile-bar {
             display: none; width: 100%; background: #2b1111; padding: 8px;
             border-top: 2px solid #ff4757; justify-content: center; gap: 6px; flex-wrap: wrap;
@@ -47,6 +52,7 @@
         }
         .mobile-btn:active { transform: scale(0.95); }
         .mobile-btn.control-btn { background: #ff4757; }
+        .mobile-btn.boss-skill-btn { background: #8e44ad; }
         .mobile-btn:disabled { background: #555 !important; color: #aaa; cursor: not-allowed; box-shadow: none; }
 
         #sidebar-container { display: flex; flex-direction: column; gap: 8px; width: min(100vw - 20px, 600px); }
@@ -100,7 +106,7 @@
 </head>
 <body>
 
-<h2>會員制的打架</h2>
+<h2 id="game-title">會員制的打架</h2>
 
 <div id="main-wrapper">
     <div id="game-container">
@@ -108,7 +114,13 @@
 
         <div id="normal-touch-bar" class="mobile-touch-bar">
             <button id="btn-shield-ui" class="mobile-btn" onclick="trySummonShield()">🛡️ 護盾 [U]</button>
-            <button class="mobile-btn control-btn" onclick="toggleControlPanel()">🎛️ 控制台 [I]</button>
+            <button id="btn-console-ui" class="mobile-btn control-btn" onclick="toggleControlPanel()">🎛️ 控制台 [I]</button>
+        </div>
+
+        <div id="pvp-boss-bar">
+            <button class="mobile-btn boss-skill-btn" onclick="triggerLaser()">🍷 黃色雷射 [1]</button>
+            <button class="mobile-btn boss-skill-btn" onclick="triggerNoodles()">🍜 召喚麵條 [2]</button>
+            <button class="mobile-btn boss-skill-btn" onclick="triggerBurger()">🥩 拋擲漢堡肉 [3]</button>
         </div>
 
         <div id="qte-mobile-bar">
@@ -181,7 +193,7 @@
 </div>
 
 <div class="instructions">
-    <p>🎮 拖曳畫面移動 | [U] 護盾 | [I] 開關控制台 | [P] 隱藏秒殺技能</p>
+    <p id="instruction-text">🎮 拖曳畫面移動 | [U] 護盾 | [I] 開關控制台 | [P] 隱藏秒殺技能</p>
 </div>
 
 <audio id="bgm" src="bgm.mp3" loop preload="auto"></audio>
@@ -192,6 +204,29 @@
 <audio id="win4Bgm" src="win4.mp3" preload="auto"></audio>
 
 <script>
+// --- 模式與網址參數分析 ---
+const urlParams = new URLSearchParams(window.location.search);
+const gameMode = urlParams.get('mode') || 'single'; // 'single', 'pve', 'pvp'
+const pvpRole = urlParams.get('pvpRole') || 'player'; // 'boss', 'player'
+const isMultiplayer = gameMode === 'pve' || gameMode === 'pvp';
+
+// 介面適應與控制台封鎖
+if (isMultiplayer) {
+    document.getElementById('achievement-section').style.display = 'none';
+    document.getElementById('control-panel-overlay').style.display = 'none';
+    document.getElementById('btn-console-ui').style.display = 'none';
+    
+    if (gameMode === 'pvp' && pvpRole === 'boss') {
+        document.getElementById('pvp-boss-bar').classList.add('active');
+        document.getElementById('normal-touch-bar').style.display = 'none';
+        document.getElementById('instruction-text').innerText = "🎮 你是 BOSS！按下 [1] 雷射 | [2] 麵條 | [3] 漢堡肉 來攻擊玩家";
+        document.getElementById('game-title').innerText = "會員制的打架 - PvP 模式 (你飾演 BOSS)";
+    } else {
+        document.getElementById('instruction-text').innerText = "🎮 拖曳畫面移動 | [U] 護盾";
+        document.getElementById('game-title').innerText = `會員制的打架 - ${gameMode.toUpperCase()} 雙人模式`;
+    }
+}
+
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -205,6 +240,7 @@ const win4Bgm = document.getElementById('win4Bgm');
 const playArea = { left: 90, right: 510, width: 420 };
 
 const imgPlayer = new Image(); imgPlayer.src = 'player.jpg';
+const imgPlayer2 = new Image(); imgPlayer2.src = 'player2.jpg';
 const imgBoss1 = new Image(); imgBoss1.src = 'boss.jpg';
 const imgBoss2 = new Image(); imgBoss2.src = 'boss2.jpg';
 const imgBoss3 = new Image(); imgBoss3.src = 'boss3.jpg';
@@ -261,32 +297,39 @@ let npc3Defeated = false;
 let qteSuccessMsgTimer = 0;
 let is1HpWinMode = false;
 
+// 玩家 1 屬性
 const player = {
-    x: playArea.left + playArea.width / 2 - 22,
+    x: playArea.left + playArea.width / 3 - 22,
     y: canvas.height - 80,
-    width: 44,
-    height: 44,
-    baseSpeed: 6,
-    speed: 6,
-    radius: 9,
-    hp: 25,
-    maxHp: 25,
-    invincibleFrame: 0
+    width: 44, height: 44,
+    baseSpeed: 6, speed: 6, radius: 9,
+    hp: 25, maxHp: 25,
+    invincibleFrame: 0,
+    isAlive: true
 };
 
-// Boss 基礎資料
+// 玩家 2 屬性 (雙人模式下開啟)
+const player2 = {
+    x: playArea.left + (playArea.width / 3) * 2 - 22,
+    y: canvas.height - 80,
+    width: 44, height: 44,
+    baseSpeed: 6, speed: 6, radius: 9,
+    hp: 25, maxHp: 25,
+    invincibleFrame: 0,
+    isAlive: isMultiplayer
+};
+
+// Boss 基礎資料 (PvE血量2倍)
+const bossHpMult = (gameMode === 'pve') ? 2 : 1;
 const boss = {
     x: playArea.left + playArea.width / 2 - 60,
     y: 35,
-    width: 120,
-    height: 70,
-    dir: 1,
-    speed: 2.5,
-    hp: 50,
-    maxHp: 50
+    width: 120, height: 70,
+    dir: 1, speed: 2.5,
+    hp: 50 * bossHpMult,
+    maxHp: 50 * bossHpMult
 };
 
-// Boss 圖片載入後將尺寸設定為原圖比例/大小
 function updateBossDimensions(img) {
     if (img && img.complete && img.naturalWidth !== 0) {
         const maxWidth = 160;
@@ -320,6 +363,7 @@ function markConsoleUsed() {
 }
 
 function toggleControlPanel() {
+    if (isMultiplayer) return; // 雙人模式禁用控制台
     const overlay = document.getElementById('control-panel-overlay');
     const isMobile = window.innerWidth < 850;
 
@@ -343,6 +387,7 @@ function toggleControlPanel() {
 }
 
 function unlockAchievement(id, key, text) {
+    if (isMultiplayer) return; // 雙人模式停用成就判定
     if (!unlockedAchievements[key]) {
         unlockedAchievements[key] = true;
         const el = document.getElementById(id);
@@ -355,17 +400,18 @@ function unlockAchievement(id, key, text) {
 
 function healPlayerToFull() {
     markConsoleUsed();
-    player.hp = player.maxHp;
+    if (player.isAlive) player.hp = player.maxHp;
+    if (isMultiplayer && player2.isAlive) player2.hp = player2.maxHp;
 }
 
 function triggerLaser() {
-    markConsoleUsed();
+    if (!isMultiplayer) markConsoleUsed();
     isLaserActive = true;
     laserDuration = 45;
 }
 
 function triggerNoodles() {
-    markConsoleUsed();
+    if (!isMultiplayer) markConsoleUsed();
     for (let i = 0; i < 4; i++) {
         noodles.push({
             x: Math.random() * (playArea.width - 60) + playArea.left + 30,
@@ -376,7 +422,7 @@ function triggerNoodles() {
 }
 
 function triggerBurger() {
-    markConsoleUsed();
+    if (!isMultiplayer) markConsoleUsed();
     const startX = boss.x + boss.width / 2;
     const startY = boss.y + boss.height;
     const targetX = Math.random() * (playArea.width - 80) + playArea.left + 40;
@@ -391,7 +437,7 @@ function triggerBurger() {
 }
 
 function triggerMedkit() {
-    markConsoleUsed();
+    if (!isMultiplayer) markConsoleUsed();
     medkits.push({
         x: Math.random() * (playArea.width - 35) + playArea.left + 15,
         y: -30, vy: 2.5, width: 30, height: 30
@@ -405,40 +451,34 @@ function clearEnemyBullets() {
 
 function resetControlPanelSwitches() {
     isResettingSwitches = true;
-    document.getElementById('sw-pause-boss').checked = false;
-    document.getElementById('sw-orange').checked = true;
-    document.getElementById('sw-green').checked = true;
-    document.getElementById('sw-brown').checked = true;
-    document.getElementById('sw-pudding').checked = true;
-    document.getElementById('sw-laser').checked = true;
-    document.getElementById('sw-burger').checked = true;
-    document.getElementById('sw-noodle').checked = true;
-    document.getElementById('sw-medkit').checked = true;
+    const swPause = document.getElementById('sw-pause-boss');
+    if (swPause) swPause.checked = false;
     isResettingSwitches = false;
 }
 
 function getPhaseMultipliers() {
-    if (bossPhase === 1) return { freq: 1 / 0.75, cd: 1.0 };
-    if (bossPhase === 2) return { freq: 1 / 1.3, cd: 0.75 };
-    if (bossPhase === 3) return { freq: 1 / 0.65, cd: 1.5 };
+    let speedMult = (gameMode === 'pve') ? 1.5 : 1.0;
+    if (bossPhase === 1) return { freq: (1 / 0.75) / speedMult, cd: 1.0 / speedMult };
+    if (bossPhase === 2) return { freq: (1 / 1.3) / speedMult, cd: 0.75 / speedMult };
+    if (bossPhase === 3) return { freq: (1 / 0.65) / speedMult, cd: 1.5 / speedMult };
     return { freq: 1.0, cd: 1.0 };
 }
 
 function spawnEnemyBullets() {
     if (qteActive) return;
-    const isBossPaused = document.getElementById('sw-pause-boss').checked;
-    if (isBossPaused) return;
+    const swPause = document.getElementById('sw-pause-boss');
+    if (swPause && swPause.checked) return;
 
     const mult = getPhaseMultipliers();
 
-    const swOrange = document.getElementById('sw-orange').checked;
-    const swGreen = document.getElementById('sw-green').checked;
-    const swBrown = document.getElementById('sw-brown').checked;
-    const swPudding = document.getElementById('sw-pudding').checked;
-    const swLaser = document.getElementById('sw-laser').checked;
-    const swBurger = document.getElementById('sw-burger').checked;
-    const swNoodle = document.getElementById('sw-noodle').checked;
-    const swMedkit = document.getElementById('sw-medkit').checked;
+    const swOrange = document.getElementById('sw-orange') ? document.getElementById('sw-orange').checked : true;
+    const swGreen = document.getElementById('sw-green') ? document.getElementById('sw-green').checked : true;
+    const swBrown = document.getElementById('sw-brown') ? document.getElementById('sw-brown').checked : true;
+    const swPudding = document.getElementById('sw-pudding') ? document.getElementById('sw-pudding').checked : true;
+    const swLaser = document.getElementById('sw-laser') ? document.getElementById('sw-laser').checked : true;
+    const swBurger = document.getElementById('sw-burger') ? document.getElementById('sw-burger').checked : true;
+    const swNoodle = document.getElementById('sw-noodle') ? document.getElementById('sw-noodle').checked : true;
+    const swMedkit = document.getElementById('sw-medkit') ? document.getElementById('sw-medkit').checked : true;
 
     if (swOrange && frameCount % Math.max(1, Math.round(25 * mult.freq)) === 0) {
         const count = 3;
@@ -471,8 +511,9 @@ function spawnEnemyBullets() {
     }
 
     if (swPudding && frameCount % Math.max(1, Math.round(180 * mult.freq)) === 0) {
-        const targetX = player.x + player.width / 2;
-        const targetY = player.y + player.height / 2;
+        const targetPlayer = (player.isAlive) ? player : player2;
+        const targetX = targetPlayer.x + targetPlayer.width / 2;
+        const targetY = targetPlayer.y + targetPlayer.height / 2;
         const startX = boss.x + boss.width / 2;
         const startY = boss.y + boss.height;
         const angle = Math.atan2(targetY - startY, targetX - startX);
@@ -482,7 +523,7 @@ function spawnEnemyBullets() {
         });
     }
 
-    if (swLaser) {
+    if (swLaser && gameMode !== 'pvp') {
         laserTimer++;
         if (laserTimer >= Math.round(540 * mult.cd)) {
             isLaserActive = true;
@@ -491,28 +532,12 @@ function spawnEnemyBullets() {
         }
     }
 
-    if (swBurger && frameCount % Math.max(1, Math.round(360 * mult.cd)) === 0) {
-        const startX = boss.x + boss.width / 2;
-        const startY = boss.y + boss.height;
-        const targetX = Math.random() * (playArea.width - 80) + playArea.left + 40;
-        const targetY = Math.random() * (canvas.height - 250) + 150;
-        const angle = Math.atan2(targetY - startY, targetX - startX);
-
-        burgerSteaks.push({
-            x: startX, y: startY, targetX: targetX, targetY: targetY,
-            vx: Math.cos(angle) * 7, vy: Math.sin(angle) * 7,
-            width: 38, height: 26, isStationary: false, stayDuration: 180
-        });
+    if (swBurger && gameMode !== 'pvp' && frameCount % Math.max(1, Math.round(360 * mult.cd)) === 0) {
+        triggerBurger();
     }
 
-    if (swNoodle && frameCount % Math.max(1, Math.round(360 * mult.cd)) === 0) {
-        for (let i = 0; i < 4; i++) {
-            noodles.push({
-                x: Math.random() * (playArea.width - 60) + playArea.left + 30,
-                y: Math.random() * (canvas.height - 300) + 180,
-                width: 18, height: 75, angle: Math.random() * Math.PI, duration: 240
-            });
-        }
+    if (swNoodle && gameMode !== 'pvp' && frameCount % Math.max(1, Math.round(360 * mult.cd)) === 0) {
+        triggerNoodles();
     }
 
     if (swMedkit && frameCount % 240 === 0) {
@@ -551,7 +576,9 @@ function handleQTEInput(pressedKey) {
         if (qteIndex >= qteSequence.length) {
             qteActive = false;
             document.getElementById('qte-mobile-bar').classList.remove('active');
-            document.getElementById('normal-touch-bar').style.display = 'flex';
+            if (gameMode !== 'pvp' || pvpRole !== 'boss') {
+                document.getElementById('normal-touch-bar').style.display = 'flex';
+            }
             triggerQTESuccess();
         }
     }
@@ -560,7 +587,7 @@ function handleQTEInput(pressedKey) {
 function triggerQTESuccess() {
     qteNpc3Shield = {
         x: playArea.left + 5,
-        y: player.y - 40,
+        y: (player.isAlive ? player.y : player2.y) - 40,
         width: playArea.width - 10,
         height: 20
     };
@@ -574,8 +601,8 @@ function triggerQTESuccess() {
         npc3Defeated = true;
         bossPhase = 3;
         updateBossDimensions(imgBoss3);
-        boss.hp = 30;
-        boss.maxHp = 30;
+        boss.hp = 30 * bossHpMult;
+        boss.maxHp = 30 * bossHpMult;
         qteLaserActive = false;
         qteNpc3Shield = null;
     }, 1500);
@@ -584,24 +611,32 @@ function triggerQTESuccess() {
 function triggerQTEFail() {
     qteActive = false;
     document.getElementById('qte-mobile-bar').classList.remove('active');
-    document.getElementById('normal-touch-bar').style.display = 'flex';
+    if (gameMode !== 'pvp' || pvpRole !== 'boss') {
+        document.getElementById('normal-touch-bar').style.display = 'flex';
+    }
     triggerGameOver();
 }
 
 function firePlayerBullet() {
     if (qteActive) return;
-    playerBullets.push({
-        x: player.x + player.width / 2, y: player.y, vy: -10, radius: 5, color: '#FFD700'
-    });
+    if (player.isAlive) {
+        playerBullets.push({ x: player.x + player.width / 2, y: player.y, vy: -10, radius: 5, color: '#FFD700' });
+    }
+    if (isMultiplayer && player2.isAlive) {
+        playerBullets.push({ x: player2.x + player2.width / 2, y: player2.y, vy: -10, radius: 5, color: '#00FFCC' });
+    }
 }
 
 function trySummonShield() {
     if (bossPhase === 3) return;
     if (shieldCooldown > 0 || isPausedForPanel || qteActive) return;
 
-    shields.push({
-        x: player.x + player.width / 2 - 25, y: player.y - 50, width: 50, height: 45
-    });
+    if (player.isAlive) {
+        shields.push({ x: player.x + player.width / 2 - 25, y: player.y - 50, width: 50, height: 45 });
+    }
+    if (isMultiplayer && player2.isAlive) {
+        shields.push({ x: player2.x + player2.width / 2 - 25, y: player2.y - 50, width: 50, height: 45 });
+    }
 
     shieldCooldown = SHIELD_CD_MAX;
     isNpc3SpecialText = true;
@@ -629,11 +664,10 @@ function triggerWin() {
     gameWin = true;
     bgm.pause(); bgm.currentTime = 0;
 
-    // 判斷 1 HP 擊敗 Boss 條件（一轉攻勢）
     if (player.hp === 1) {
         is1HpWinMode = true;
         unlockAchievement('ach-5', 'ach5', '一轉攻勢');
-        win4Bgm.currentTime = 0; win4Bgm.play().catch(() => {}); // 播放 win4.mp3
+        win4Bgm.currentTime = 0; win4Bgm.play().catch(() => {});
     } else if (hasUsedConsole) {
         unlockAchievement('ach-3', 'ach3', '低調的黑客');
         win2Bgm.currentTime = 0; win2Bgm.play().catch(() => {});
@@ -666,12 +700,20 @@ window.addEventListener('keydown', e => {
         return;
     }
 
+    // PvP Boss 按鍵觸發
+    if (gameMode === 'pvp' && pvpRole === 'boss') {
+        if (e.key === '1') triggerLaser();
+        if (e.key === '2') triggerNoodles();
+        if (e.key === '3') triggerBurger();
+        return;
+    }
+
     if (e.key === 'u' || e.key === 'U' || e.code === 'KeyU') {
         if (!gameOver && !gameWin) trySummonShield();
     }
     if (e.key === 'i' || e.key === 'I' || e.code === 'KeyI') toggleControlPanel();
     if (e.key === 'p' || e.key === 'P' || e.code === 'KeyP') {
-        if (!gameOver && !gameWin) triggerWin();
+        if (!gameOver && !gameWin && !isMultiplayer) triggerWin();
     }
     if ((gameOver || gameWin) && (e.code === 'Space' || e.code === 'Enter')) resetGame();
 });
@@ -721,8 +763,10 @@ function updatePlayerPos(evt) {
     const touchX = (evt.clientX - rect.left) * scaleX;
     const touchY = (evt.clientY - rect.top) * scaleY;
 
-    player.x = touchX - player.width / 2;
-    player.y = touchY - player.height / 2;
+    if (player.isAlive) {
+        player.x = touchX - player.width / 2;
+        player.y = touchY - player.height / 2;
+    }
 }
 
 function resetGame() {
@@ -740,7 +784,9 @@ function resetGame() {
     qteSuccessMsgTimer = 0;
 
     document.getElementById('qte-mobile-bar').classList.remove('active');
-    document.getElementById('normal-touch-bar').style.display = 'flex';
+    if (gameMode !== 'pvp' || pvpRole !== 'boss') {
+        document.getElementById('normal-touch-bar').style.display = 'flex';
+    }
 
     resetControlPanelSwitches();
 
@@ -752,15 +798,27 @@ function resetGame() {
     noodles.length = 0; medkits.length = 0;
     laserTimer = 0; isLaserActive = false; laserDuration = 0;
 
-    player.x = playArea.left + playArea.width / 2 - 22;
+    player.x = playArea.left + playArea.width / 3 - 22;
     player.y = canvas.height - 80;
     player.maxHp = 25;
     player.hp = player.maxHp;
     player.invincibleFrame = 0;
     player.speed = player.baseSpeed;
+    player.isAlive = true;
+
+    if (isMultiplayer) {
+        player2.x = playArea.left + (playArea.width / 3) * 2 - 22;
+        player2.y = canvas.height - 80;
+        player2.maxHp = 25;
+        player2.hp = player2.maxHp;
+        player2.invincibleFrame = 0;
+        player2.speed = player2.baseSpeed;
+        player2.isAlive = true;
+    }
 
     boss.x = playArea.left + playArea.width / 2 - 60;
-    boss.hp = 50; boss.maxHp = 50;
+    boss.hp = 50 * bossHpMult; 
+    boss.maxHp = 50 * bossHpMult;
 
     isNpc3SpecialText = false;
     if (npc3SpecialTextTimer) clearTimeout(npc3SpecialTextTimer);
@@ -769,7 +827,7 @@ function resetGame() {
     winBgm.pause(); winBgm.currentTime = 0;
     win2Bgm.pause(); win2Bgm.currentTime = 0;
     win3Bgm.pause(); win3Bgm.currentTime = 0;
-    win4Bgm.pause(); win4Bgm.currentTime = 0; // 重置 win4 音樂
+    win4Bgm.pause(); win4Bgm.currentTime = 0;
     bgm.currentTime = 0;
     playBGM();
 }
@@ -809,6 +867,22 @@ function checkShieldCollision(shield, eb) {
     );
 }
 
+function handlePlayerHit(p, damage) {
+    if (p.invincibleFrame === 0 && p.isAlive) {
+        p.hp -= damage;
+        tookDamage = true;
+        p.invincibleFrame = 30;
+        if (p.hp <= 0) {
+            p.hp = 0;
+            p.isAlive = false;
+            // 全員死亡才結束遊戲
+            if (!player.isAlive && (!isMultiplayer || !player2.isAlive)) {
+                triggerGameOver();
+            }
+        }
+    }
+}
+
 function update() {
     if (!gameStarted || gameOver || gameWin || isPausedForPanel) return;
 
@@ -833,6 +907,7 @@ function update() {
     }
 
     if (player.invincibleFrame > 0) player.invincibleFrame--;
+    if (player2.invincibleFrame > 0) player2.invincibleFrame--;
 
     if (qteActive) {
         qteTimer--;
@@ -842,45 +917,49 @@ function update() {
         }
     }
 
-    let inSeal = false;
-    const playerCenterX = player.x + player.width / 2;
-    const playerCenterY = player.y + player.height / 2;
+    // 處理 Player 1 移動
+    if (player.isAlive) {
+        let inSeal1 = false;
+        const p1CenterX = player.x + player.width / 2;
+        const p1CenterY = player.y + player.height / 2;
 
-    for (let i = sealZones.length - 1; i >= 0; i--) {
-        const zone = sealZones[i];
-        zone.duration--;
-        const dx = playerCenterX - zone.x; const dy = playerCenterY - zone.y;
-        if (Math.sqrt(dx * dx + dy * dy) < zone.radius) inSeal = true;
-        if (zone.duration <= 0) sealZones.splice(i, 1);
-    }
+        for (let i = sealZones.length - 1; i >= 0; i--) {
+            const zone = sealZones[i];
+            const dx = p1CenterX - zone.x; const dy = p1CenterY - zone.y;
+            if (Math.sqrt(dx * dx + dy * dy) < zone.radius) inSeal1 = true;
+            if (zone.duration <= 0) sealZones.splice(i, 1);
+        }
 
-    player.speed = inSeal ? player.baseSpeed * 0.4 : player.baseSpeed;
+        player.speed = inSeal1 ? player.baseSpeed * 0.4 : player.baseSpeed;
+        const oldX1 = player.x; const oldY1 = player.y;
 
-    const oldX = player.x; const oldY = player.y;
+        if (keys['ArrowLeft'] || keys['a'] || keys['A']) player.x -= player.speed;
+        if (keys['ArrowRight'] || keys['d'] || keys['D']) player.x += player.speed;
+        if (keys['ArrowUp'] || keys['w'] || keys['W']) player.y -= player.speed;
+        if (keys['ArrowDown'] || keys['s'] || keys['S']) player.y += player.speed;
 
-    if (keys['ArrowLeft'] || keys['a'] || keys['A']) player.x -= player.speed;
-    if (keys['ArrowRight'] || keys['d'] || keys['D']) player.x += player.speed;
-    if (keys['ArrowUp'] || keys['w'] || keys['W']) player.y -= player.speed;
-    if (keys['ArrowDown'] || keys['s'] || keys['S']) player.y += player.speed;
+        player.x = Math.max(playArea.left, Math.min(playArea.right - player.width, player.x));
+        player.y = Math.max(bossWallY, Math.min(canvas.height - player.height, player.y));
 
-    if ((keys['Space'] || keys['KeySpace']) && frameCount % 8 === 0) firePlayerBullet();
-    if (isDragging && frameCount % 8 === 0) firePlayerBullet();
-
-    player.x = Math.max(playArea.left, Math.min(playArea.right - player.width, player.x));
-    player.y = Math.max(bossWallY, Math.min(canvas.height - player.height, player.y));
-
-    for (let nd of noodles) {
-        if (checkPointNoodleCollision(player.x + player.width / 2, player.y + player.height / 2, nd)) {
-            player.x = oldX; player.y = oldY; break;
+        for (let nd of noodles) {
+            if (checkPointNoodleCollision(player.x + player.width / 2, player.y + player.height / 2, nd)) {
+                player.x = oldX1; player.y = oldY1; break;
+            }
         }
     }
 
+    // 發射子彈邏輯
+    if ((keys['Space'] || keys['KeySpace']) && frameCount % 8 === 0) firePlayerBullet();
+    if (isDragging && frameCount % 8 === 0) firePlayerBullet();
+
     shields.forEach(s => {
-        s.x = player.x + player.width / 2 - s.width / 2;
-        s.y = player.y - s.height - 5;
+        const pTarget = player.isAlive ? player : player2;
+        s.x = pTarget.x + pTarget.width / 2 - s.width / 2;
+        s.y = pTarget.y - s.height - 5;
     });
 
-    const isBossPaused = document.getElementById('sw-pause-boss').checked;
+    const swPause = document.getElementById('sw-pause-boss');
+    const isBossPaused = swPause ? swPause.checked : false;
     if (!isBossPaused && !qteActive) {
         boss.x += boss.speed * boss.dir;
         if (boss.x <= playArea.left + 10 || boss.x + boss.width >= playArea.right - 10) {
@@ -898,10 +977,13 @@ function update() {
     for (let i = medkits.length - 1; i >= 0; i--) {
         const m = medkits[i];
         m.y += m.vy;
-        if (checkAABBCollision(player, m)) {
+        if (player.isAlive && checkAABBCollision(player, m)) {
             player.hp = Math.min(player.maxHp, player.hp + 1);
-            medkits.splice(i, 1);
-            continue;
+            medkits.splice(i, 1); continue;
+        }
+        if (isMultiplayer && player2.isAlive && checkAABBCollision(player2, m)) {
+            player2.hp = Math.min(player2.maxHp, player2.hp + 1);
+            medkits.splice(i, 1); continue;
         }
         if (m.y > canvas.height + 50) medkits.splice(i, 1);
     }
@@ -911,16 +993,15 @@ function update() {
         const laserX = boss.x + boss.width / 2;
         const laserWidth = 30;
 
-        if (
-            player.invincibleFrame === 0 &&
-            playerCenterX > laserX - laserWidth / 2 &&
-            playerCenterX < laserX + laserWidth / 2 &&
-            playerCenterY > boss.y + boss.height
-        ) {
-            player.hp -= 2; tookDamage = true;
-            player.invincibleFrame = 30;
-            if (player.hp <= 0) { triggerGameOver(); return; }
-        }
+        [player, player2].forEach(p => {
+            if (p.isAlive && p.invincibleFrame === 0) {
+                const pcX = p.x + p.width / 2;
+                const pcY = p.y + p.height / 2;
+                if (pcX > laserX - laserWidth / 2 && pcX < laserX + laserWidth / 2 && pcY > boss.y + boss.height) {
+                    handlePlayerHit(p, 2);
+                }
+            }
+        });
         if (laserDuration <= 0) isLaserActive = false;
     }
 
@@ -949,17 +1030,19 @@ function update() {
         const p = puddings[i];
         p.x += p.vx; p.y += p.vy;
 
-        const dx = playerCenterX - p.x; const dy = playerCenterY - p.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+        let hitAny = false;
+        [player, player2].forEach(pTarget => {
+            if (pTarget.isAlive) {
+                const dx = (pTarget.x + pTarget.width / 2) - p.x;
+                const dy = (pTarget.y + pTarget.height / 2) - p.y;
+                if (Math.sqrt(dx * dx + dy * dy) < p.radius + pTarget.radius) {
+                    handlePlayerHit(pTarget, 2);
+                    hitAny = true;
+                }
+            }
+        });
 
-        let hitPlayer = false;
-        if (player.invincibleFrame === 0 && dist < p.radius + player.radius) {
-            player.hp -= 2; tookDamage = true;
-            player.invincibleFrame = 30; hitPlayer = true;
-            if (player.hp <= 0) { triggerGameOver(); return; }
-        }
-
-        if (hitPlayer || p.y >= canvas.height - 20 || p.x <= playArea.left || p.x >= playArea.right) {
+        if (hitAny || p.y >= canvas.height - 20 || p.x <= playArea.left || p.x >= playArea.right) {
             sealZones.push({ x: p.x, y: p.y, radius: 45, duration: 180 });
             puddings.splice(i, 1);
         }
@@ -979,13 +1062,13 @@ function update() {
             boss.hp--;
             playerBullets.splice(i, 1);
 
-            if (bossPhase === 1 && boss.hp <= 10) {
+            if (bossPhase === 1 && boss.hp <= 10 * bossHpMult) {
                 bossPhase = 2;
                 updateBossDimensions(imgBoss2);
-                player.maxHp += 10;
-                player.hp += 10;
-                boss.hp = 80;
-                boss.maxHp = 80;
+                if (player.isAlive) { player.maxHp += 10; player.hp += 10; }
+                if (isMultiplayer && player2.isAlive) { player2.maxHp += 10; player2.hp += 10; }
+                boss.hp = 80 * bossHpMult;
+                boss.maxHp = 80 * bossHpMult;
             }
             else if (bossPhase === 2 && boss.hp <= 0) {
                 boss.hp = 0;
@@ -1019,14 +1102,12 @@ function update() {
         }
         if (blockedByShield) continue;
 
-        if (player.invincibleFrame === 0) {
-            if (checkPointRectCollision(playerCenterX, playerCenterY, eb)) {
-                player.hp -= (eb.damage || 1); tookDamage = true;
-                player.invincibleFrame = 30; enemyBullets.splice(i, 1);
-                if (player.hp <= 0) { triggerGameOver(); return; }
-                continue;
+        [player, player2].forEach(pTarget => {
+            if (pTarget.isAlive && checkPointRectCollision(pTarget.x + pTarget.width / 2, pTarget.y + pTarget.height / 2, eb)) {
+                handlePlayerHit(pTarget, eb.damage || 1);
+                enemyBullets.splice(i, 1);
             }
-        }
+        });
 
         if (eb.y > canvas.height + 50 || eb.y < -50 || eb.x < -50 || eb.x > canvas.width + 50) {
             enemyBullets.splice(i, 1);
@@ -1214,6 +1295,37 @@ function drawQTEReflection() {
     }
 }
 
+function drawPlayerCharacter(pObj, imgObj, fallbackColor, hitDotColor, label = "") {
+    if (!pObj.isAlive) {
+        ctx.fillStyle = '#aaa';
+        ctx.font = 'bold 12px "Microsoft JhengHei", Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('👻 觀戰中...', pObj.x + pObj.width / 2, pObj.y + pObj.height / 2);
+        return;
+    }
+
+    if (pObj.invincibleFrame % 4 < 2) {
+        if (imgObj.complete && imgObj.naturalWidth !== 0) {
+            ctx.drawImage(imgObj, pObj.x, pObj.y, pObj.width, pObj.height);
+        } else {
+            ctx.fillStyle = fallbackColor;
+            ctx.fillRect(pObj.x, pObj.y, pObj.width, pObj.height);
+        }
+    }
+
+    ctx.fillStyle = hitDotColor;
+    ctx.beginPath();
+    ctx.arc(pObj.x + pObj.width / 2, pObj.y + pObj.height / 2, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (label) {
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 10px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, pObj.x + pObj.width / 2, pObj.y - 4);
+    }
+}
+
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -1312,15 +1424,11 @@ function draw() {
         else { ctx.fillStyle = '#1e90ff'; ctx.fillRect(s.x, s.y, s.width, s.height); }
     });
 
-    if (player.invincibleFrame % 4 < 2) {
-        if (imgPlayer.complete && imgPlayer.naturalWidth !== 0) ctx.drawImage(imgPlayer, player.x, player.y, player.width, player.height);
-        else { ctx.fillStyle = '#00d2ff'; ctx.fillRect(player.x, player.y, player.width, player.height); }
+    // 繪製 P1 與 P2 角色
+    drawPlayerCharacter(player, imgPlayer, '#00d2ff', '#2ed573', isMultiplayer ? "P1" : "");
+    if (isMultiplayer) {
+        drawPlayerCharacter(player2, imgPlayer2, '#e67e22', '#f1c40f', "P2");
     }
-
-    ctx.fillStyle = '#2ed573';
-    ctx.beginPath();
-    ctx.arc(player.x + player.width / 2, player.y + player.height / 2, 3, 0, Math.PI * 2);
-    ctx.fill();
 
     playerBullets.forEach(pb => {
         ctx.fillStyle = pb.color;
@@ -1360,7 +1468,11 @@ function draw() {
 
     ctx.fillStyle = '#ff4757';
     ctx.font = 'bold 14px Arial';
-    ctx.fillText(`HP: ${player.hp} / ${player.maxHp}`, playArea.left + 15, 55);
+    if (isMultiplayer) {
+        ctx.fillText(`P1 HP: ${player.hp}/${player.maxHp}  P2 HP: ${player2.hp}/${player2.maxHp}`, playArea.left + 15, 55);
+    } else {
+        ctx.fillText(`HP: ${player.hp} / ${player.maxHp}`, playArea.left + 15, 55);
+    }
 
     ctx.fillStyle = '#FFD700';
     ctx.font = 'bold 14px "Microsoft JhengHei", Arial';
@@ -1398,7 +1510,6 @@ function draw() {
             winImage = imgWin3;
         }
 
-        // 獲勝圖片放大一倍 (原本 240x200 放大為 480x400)
         const winW = 480;
         const winH = 400;
         if (winImage.complete && winImage.naturalWidth !== 0) {
@@ -1420,7 +1531,6 @@ function draw() {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.92)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 失敗圖片放大兩倍 (原本 360x360 放大為 720x720，畫布寬度 600px 自動切齊邊緣)
         const loseSize = 520;
         if (imgGameOver.complete && imgGameOver.naturalWidth !== 0) {
             ctx.drawImage(imgGameOver, (canvas.width - loseSize) / 2, 10, loseSize, loseSize);
