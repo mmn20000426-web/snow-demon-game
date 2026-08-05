@@ -11,7 +11,7 @@
             padding: 0;
         }
         body {
-            /* 🖼️ 背景設定為 base.jpg */
+            /* 🖼️ 設定全螢幕滿版背景圖片 base.jpg */
             background: #0b0c10 url('base.jpg') no-repeat center center fixed;
             background-size: cover;
             color: #ffffff;
@@ -229,12 +229,12 @@
     </div>
 
     <div id="guest-lobby-panel" class="sub-panel">
-        <h3>⏳ 參加者等待室</h3>
+        <h3>⏳ 隊友等待室</h3>
         <p style="text-align: center; margin-bottom: 10px;">已成功加入房間：<b id="guest-room-code" style="color: #66fcf1; font-size: 20px;">-----</b></p>
-        <p style="font-size: 14px; color: #66fcf1; text-align: center; margin-bottom: 15px;">請等待房主點擊「開始遊戲」...</p>
+        <p style="font-size: 14px; color: #66fcf1; text-align: center; margin-bottom: 15px;">已進入房間！請等待房主點擊「開始遊戲」...</p>
         
         <div class="btn-group" style="margin-bottom: 0;">
-            <button class="btn btn-danger" style="padding: 8px;" onclick="closeMultiplayerPanel()">🔙 離開房間</button>
+            <button class="btn btn-danger" style="padding: 8px;" onclick="closeMultiplayerPanel()">🔙 退出房間</button>
         </div>
     </div>
 
@@ -276,7 +276,7 @@
         }
     }
 
-    // 關閉面板
+    // 關閉面板返回選單
     function closeMultiplayerPanel() {
         document.getElementById('main-menu').style.display = 'flex';
         document.getElementById('multiplayer-panel').style.display = 'none';
@@ -298,7 +298,7 @@
     function createRoom() {
         generatedRoomCode = generateCode();
         
-        // 🔒 將房間碼存入本地快取 (模擬伺服器上記錄房號)
+        // 🔒 將開房紀錄寫入本地快取 (模擬伺服器驗證庫)
         localStorage.setItem("active_room_" + generatedRoomCode, JSON.stringify({
             mode: currentMultiMode,
             created: Date.now()
@@ -315,36 +315,31 @@
         window.location.href = `game.html?mode=${currentMultiMode}&role=host&room=${generatedRoomCode}&pvpRole=${pvpRole}`;
     }
 
-    // 5. 加入房間 (參加者) - ✨ 已修復 Bug！
+    // 5. 輸入邀請碼加入房間 (隊友) - ✨ 嚴格驗證阻擋 Bug
     function joinRoom() {
         const inputCode = document.getElementById('room-code').value.trim().toUpperCase();
         const errorSpan = document.getElementById('code-error');
 
-        // 防呆 1：長度不對
+        // 防呆 1：邀請碼長度不符合 5 碼
         if (inputCode.length !== 5) {
             errorSpan.innerText = '❌ 請輸入完整的 5 位數邀請碼！';
             return;
         }
 
-        // 防呆 2：驗證邀請碼是否存在 (模擬 API/伺服器驗證)
+        // 防呆 2：驗證邀請碼是否存在 (檢查 localStorage 中有無此創房資料)
         const roomData = localStorage.getItem("active_room_" + inputCode);
         
         if (!roomData) {
+            // ❌ 邀請碼無效，強制擋下！
             errorSpan.innerText = '❌ 邀請碼不存在或房間已關閉！';
-            return; // ⛔ 強制阻擋，不讓進入！
+            return;
         }
 
-        // 驗證成功 -> 切換至參加者等待室
+        // ✅ 驗證成功 -> 進入隊友等待室
         errorSpan.innerText = '';
         document.getElementById('multiplayer-panel').style.display = 'none';
         document.getElementById('guest-lobby-panel').style.display = 'block';
         document.getElementById('guest-room-code').innerText = inputCode;
-
-        /* 💡 若未來接入伺服器 (Socket.io)，可以在這裡加上監聽：
-           socket.on('gameStarted', () => {
-               window.location.href = `game.html?mode=${currentMultiMode}&role=guest&room=${inputCode}`;
-           });
-        */
     }
 </script>
 
