@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>直向彈幕大作戰 - 遊戲首頁</title>
     <title>會員制射擊 - 遊戲首頁</title>
     <style>
         * {
@@ -112,6 +111,49 @@
             background: #45a29e;
             color: #0b0c10;
         }
+        .btn-danger {
+            background: #ff4757;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #ff6b81;
+        }
+
+        /* 🎮 擴充的新樣式區域 */
+        .sub-panel {
+            display: none;
+            background: rgba(11, 12, 16, 0.6);
+            border: 1px solid #66fcf1;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .sub-panel h3 {
+            font-size: 16px;
+            color: #66fcf1;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 12px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 4px;
+            color: #c5c6c7;
+        }
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            font-size: 15px;
+            border-radius: 6px;
+            border: 1px solid #45a29e;
+            background: #1f2833;
+            color: #fff;
+            box-sizing: border-box;
+        }
         .info-box {
             background: rgba(0, 0, 0, 0.5);
             border-radius: 8px;
@@ -140,9 +182,44 @@
     <h1>快點打贏雪之惡魔🗣️🗣️🗣️</h1>
     <p class="subtitle">否則你將屎到臨頭💀💀💀</p>
 
-    <div class="btn-group">
-        <a href="game.html" class="btn btn-primary">🎮 開始遊戲 (電腦 / 鍵盤模式)</a>
-        <a href="game.html" class="btn btn-secondary">📱 手機直覺模式 (觸控操作)</a>
+    <div id="main-menu" class="btn-group">
+        <button class="btn btn-primary" onclick="startSinglePlayer()">🥊 單人赤石模式 (原版)</button>
+        <button class="btn btn-secondary" onclick="openMultiplayerPanel('pve')">👥 雙人赤石 - PvE (合作打 AI)</button>
+        <button class="btn btn-secondary" onclick="openMultiplayerPanel('pvp')">⚔️ 雙人赤石 - PvP (玩家 vs BOSS)</button>
+    </div>
+
+    <div id="multiplayer-panel" class="sub-panel">
+        <h3 id="panel-title">👥 雙人模式設定</h3>
+
+        <div id="pvp-role-group" class="form-group" style="display: none;">
+            <label for="pvp-role">👹 房主角色選擇：</label>
+            <select id="pvp-role" class="form-control">
+                <option value="boss">👹 我要當雪之惡魔 (BOSS)</option>
+                <option value="player">🛡️ 我要當勇者 (玩家)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="room-code">🔑 邀請碼 (加入房間填寫)：</label>
+            <input type="text" id="room-code" class="form-control" placeholder="請輸入 5 位數邀請碼" maxlength="5">
+        </div>
+
+        <div class="btn-group" style="margin-bottom: 0;">
+            <button class="btn btn-primary" onclick="createRoom()">🏠 創建房間 (成為房主)</button>
+            <button class="btn btn-secondary" onclick="joinRoom()">🔗 輸入邀請碼加入</button>
+            <button class="btn btn-danger" style="padding: 8px; margin-top: 5px;" onclick="closeMultiplayerPanel()">🔙 返回模式選擇</button>
+        </div>
+    </div>
+
+    <div id="lobby-panel" class="sub-panel">
+        <h3>🏠 房間準備大廳</h3>
+        <p style="text-align: center; margin-bottom: 10px;">房間邀請碼：<b id="display-room-code" style="color: #66fcf1; font-size: 20px;">-----</b></p>
+        <p id="lobby-status" style="font-size: 14px; color: #ff4757; text-align: center; margin-bottom: 15px;">⏳ 等待隊友加入中...</p>
+        
+        <div class="btn-group" style="margin-bottom: 0;">
+            <button id="start-game-btn" class="btn btn-primary" onclick="hostStartGame()">🚀 開始遊戲！</button>
+            <button class="btn btn-danger" style="padding: 8px;" onclick="closeMultiplayerPanel()">🔙 取消解散</button>
+        </div>
     </div>
 
     <div class="info-box">
@@ -155,6 +232,77 @@
         </ul>
     </div>
 </div>
+
+<script>
+    let currentMultiMode = 'pve'; // pve 或 pvp
+    let generatedRoomCode = '';
+
+    // 1. 單人赤石模式 (原本的版本)
+    function startSinglePlayer() {
+        window.location.href = 'game.html?mode=single';
+    }
+
+    // 2. 打開雙人連線設定面板
+    function openMultiplayerPanel(mode) {
+        currentMultiMode = mode;
+        document.getElementById('main-menu').style.display = 'none';
+        document.getElementById('multiplayer-panel').style.display = 'block';
+        document.getElementById('lobby-panel').style.display = 'none';
+
+        if (mode === 'pvp') {
+            document.getElementById('panel-title').innerText = '⚔️ 雙人 PvP 對戰模式';
+            document.getElementById('pvp-role-group').style.display = 'block';
+        } else {
+            document.getElementById('panel-title').innerText = '👥 雙人 PvE 合作模式';
+            document.getElementById('pvp-role-group').style.display = 'none';
+        }
+    }
+
+    // 關閉面板返回主選單
+    function closeMultiplayerPanel() {
+        document.getElementById('main-menu').style.display = 'flex';
+        document.getElementById('multiplayer-panel').style.display = 'none';
+        document.getElementById('lobby-panel').style.display = 'none';
+    }
+
+    // 產生 5 碼隨機邀請碼
+    function generateCode() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let code = '';
+        for (let i = 0; i < 5; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return code;
+    }
+
+    // 3. 創建房間 (成為房主)
+    function createRoom() {
+        generatedRoomCode = generateCode();
+        const pvpRole = document.getElementById('pvp-role').value;
+
+        document.getElementById('multiplayer-panel').style.display = 'none';
+        document.getElementById('lobby-panel').style.display = 'block';
+        document.getElementById('display-room-code').innerText = generatedRoomCode;
+    }
+
+    // 4. 房主決定何時開始遊戲
+    function hostStartGame() {
+        const pvpRole = document.getElementById('pvp-role').value;
+        // 帶上參數跳轉至 game.html
+        window.location.href = `game.html?mode=${currentMultiMode}&role=host&room=${generatedRoomCode}&pvpRole=${pvpRole}`;
+    }
+
+    // 5. 加入房間 (成為參加者)
+    function joinRoom() {
+        const inputCode = document.getElementById('room-code').value.trim().toUpperCase();
+        if (inputCode.length !== 5) {
+            alert('請輸入正確的 5 位數房間邀請碼！');
+            return;
+        }
+        // 加入者直接進入 game.html 等待房主開始同步
+        window.location.href = `game.html?mode=${currentMultiMode}&role=guest&room=${inputCode}`;
+    }
+</script>
 
 </body>
 </html>
