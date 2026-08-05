@@ -231,10 +231,11 @@
     <div id="guest-lobby-panel" class="sub-panel">
         <h3>⏳ 隊友等待室</h3>
         <p style="text-align: center; margin-bottom: 10px;">已成功加入房間：<b id="guest-room-code" style="color: #66fcf1; font-size: 20px;">-----</b></p>
-        <p style="font-size: 14px; color: #66fcf1; text-align: center; margin-bottom: 15px;">已進入房間！請等待房主點擊「開始遊戲」...</p>
+        <p style="font-size: 14px; color: #66fcf1; text-align: center; margin-bottom: 15px;">房間已就緒，請點擊下方按鈕前往戰鬥大廳！</p>
         
         <div class="btn-group" style="margin-bottom: 0;">
-            <button class="btn btn-danger" style="padding: 8px;" onclick="closeMultiplayerPanel()">🔙 退出房間</button>
+            <button class="btn btn-primary" onclick="guestEnterGame()">⚔️ 進入遊戲大廳</button>
+            <button class="btn btn-danger" style="padding: 8px; margin-top: 5px;" onclick="closeMultiplayerPanel()">🔙 退出房間</button>
         </div>
     </div>
 
@@ -252,6 +253,7 @@
 <script>
     let currentMultiMode = 'pve'; 
     let generatedRoomCode = '';
+    let joinedGuestRoomCode = ''; // 紀錄玩家 2 所填寫的邀請碼
 
     // 1. 單人模式
     function startSinglePlayer() {
@@ -297,12 +299,6 @@
     // 3. 創建房間 (成為房主)
     function createRoom() {
         generatedRoomCode = generateCode();
-        
-        // 🔒 將開房紀錄寫入本地快取 (模擬伺服器驗證庫)
-        localStorage.setItem("active_room_" + generatedRoomCode, JSON.stringify({
-            mode: currentMultiMode,
-            created: Date.now()
-        }));
 
         document.getElementById('multiplayer-panel').style.display = 'none';
         document.getElementById('host-lobby-panel').style.display = 'block';
@@ -315,31 +311,30 @@
         window.location.href = `game.html?mode=${currentMultiMode}&role=host&room=${generatedRoomCode}&pvpRole=${pvpRole}`;
     }
 
-    // 5. 輸入邀請碼加入房間 (隊友) - ✨ 嚴格驗證阻擋 Bug
+    // 5. 輸入邀請碼加入房間 (隊友) - ✨ 允許跨電腦輸入驗證
     function joinRoom() {
         const inputCode = document.getElementById('room-code').value.trim().toUpperCase();
         const errorSpan = document.getElementById('code-error');
 
-        // 防呆 1：邀請碼長度不符合 5 碼
+        // 基本防呆：檢查長度是否為 5 位
         if (inputCode.length !== 5) {
             errorSpan.innerText = '❌ 請輸入完整的 5 位數邀請碼！';
             return;
         }
 
-        // 防呆 2：驗證邀請碼是否存在 (檢查 localStorage 中有無此創房資料)
-        const roomData = localStorage.getItem("active_room_" + inputCode);
-        
-        if (!roomData) {
-            // ❌ 邀請碼無效，強制擋下！
-            errorSpan.innerText = '❌ 邀請碼不存在或房間已關閉！';
-            return;
-        }
-
-        // ✅ 驗證成功 -> 進入隊友等待室
+        // 驗證長度通過 -> 進入隊友等待室，並紀錄邀請碼
         errorSpan.innerText = '';
+        joinedGuestRoomCode = inputCode;
+
         document.getElementById('multiplayer-panel').style.display = 'none';
         document.getElementById('guest-lobby-panel').style.display = 'block';
         document.getElementById('guest-room-code').innerText = inputCode;
+    }
+
+    // 6. 隊友點擊按鈕進入 game.html 進行 PeerJS 連線驗證
+    function guestEnterGame() {
+        if (!joinedGuestRoomCode) return;
+        window.location.href = `game.html?mode=${currentMultiMode}&role=guest&room=${joinedGuestRoomCode}`;
     }
 </script>
 
