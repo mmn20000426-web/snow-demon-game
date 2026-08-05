@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>會員制的打架 - 赤石大王</title>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; touch-action: none; }
         body {
@@ -14,11 +13,10 @@
         }
         h2 { margin: 2px 0 12px 0; color: #FFD700; text-align: center; font-size: 22px; }
         
-        /* 主選單容器 */
         #menu-container {
             background: #1a1c23; border: 2px solid #FFD700; border-radius: 8px;
             padding: 20px; width: min(100vw - 20px, 500px); text-align: center;
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.3); display: block;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
         }
         .menu-title { font-size: 18px; color: #FFD700; font-weight: bold; margin-bottom: 15px; }
         .menu-btn {
@@ -30,7 +28,6 @@
         .menu-btn.red { background: #ff4757; }
         .menu-btn.green { background: #2ed573; color: #111; }
         
-        /* 連線設定區塊 */
         #net-panel {
             display: none; margin-top: 15px; padding-top: 15px;
             border-top: 1px solid #444; background: #252836; border-radius: 6px; padding: 10px;
@@ -40,39 +37,6 @@
             text-align: center; text-transform: uppercase; letter-spacing: 2px; width: 140px; margin: 4px;
         }
         #status-text { color: #2ed573; font-size: 14px; margin-top: 8px; font-weight: bold; }
-
-        /* 遊戲區域 */
-        #main-wrapper {
-            display: none; flex-direction: column; align-items: center; gap: 10px; width: 100%; max-width: 600px;
-        }
-        #game-container {
-            position: relative; box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
-            border-radius: 8px; overflow: hidden; display: flex; flex-direction: column;
-            align-items: center; width: 100%; flex-shrink: 0; z-index: 1; background: #0d0f18;
-        }
-        canvas { background: #0d0f18; display: block; cursor: crosshair; width: 100%; height: auto; }
-        
-        /* 手機 UI 按鈕區 */
-        .mobile-touch-bar {
-            width: 100%; background: #1a1c23; display: flex; justify-content: space-around;
-            padding: 8px; border-top: 2px solid #333a4e;
-        }
-        
-        /* BOSS 手機玩家專用技能按鈕區 (PvP) */
-        #boss-mobile-bar {
-            display: none; width: 100%; background: #2b1111; padding: 8px;
-            border-top: 2px solid #ff4757; justify-content: space-around; flex-wrap: wrap; gap: 4px;
-        }
-        .boss-skill-btn {
-            background: #e74c3c; color: white; border: 1px solid #fff; padding: 8px 12px;
-            font-size: 13px; font-weight: bold; border-radius: 6px; cursor: pointer;
-        }
-        .boss-skill-btn:active { transform: translateY(2px); background: #c0392b; }
-
-        .mobile-btn {
-            background: #1e90ff; color: white; border: none; padding: 10px 16px;
-            font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer;
-        }
     </style>
 </head>
 <body>
@@ -82,7 +46,7 @@
 <div id="menu-container">
     <div class="menu-title">🎮 請選擇遊戲模式</div>
     
-    <button class="menu-btn red" onclick="startSingleMode()">🥊 單人赤石模式 (原版)</button>
+    <button class="menu-btn red" onclick="goGame('single')">🥊 單人赤石模式 (原版)</button>
     <button class="menu-btn green" onclick="showMultiplayerSetup('pve')">👥 雙人赤石 - PvE (合作打 AI)</button>
     <button class="menu-btn" onclick="showMultiplayerSetup('pvp')">⚔️ 雙人赤石 - PvP (玩家 vs Boss)</button>
 
@@ -108,67 +72,19 @@
     </div>
 </div>
 
-<div id="main-wrapper">
-    <div id="game-container">
-        <canvas id="gameCanvas" width="600" height="600"></canvas>
-        
-        <div id="normal-touch-bar" class="mobile-touch-bar">
-            <button id="btn-shield-ui" class="mobile-btn" onclick="trySummonShield()">🛡️ 護盾</button>
-            <button class="mobile-btn" style="background:#8e44ad;" onclick="backToMenu()">🔙 返回主選單</button>
-        </div>
-
-        <div id="boss-mobile-bar">
-            <button class="boss-skill-btn" onclick="bossCastSkill('fan')">🍊 扇形彈幕</button>
-            <button class="boss-skill-btn" onclick="bossCastSkill('laser')">⚡ 黃色雷射</button>
-            <button class="boss-skill-btn" onclick="backToMenu()" style="background:#8e44ad;">🔙 選單</button>
-        </div>
-    </div>
-</div>
-
 <script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+let currentMode = 'single';
 
-let selectedMode = 'single'; // 'single', 'pve', 'pvp'
-let peer = null, conn = null;
-let roomCode = '';
-let myNetRole = 'host';
-let isConnected = false;
-let gameRunning = false;
-
-// 遊戲參數
-let bulletSpeedMult = 1.0;
-let bossHpMult = 1.0;
-
-const playArea = { left: 90, right: 510, width: 420 };
-const player = { x: 278, y: 520, width: 44, height: 44, hp: 25, maxHp: 25, speed: 6 };
-const boss = { x: 240, y: 35, width: 120, height: 70, hp: 50, maxHp: 50, speed: 2.5, dir: 1 };
-const enemyBullets = [];
-
-// --- 選單動作 ---
-function startSingleMode() {
-    selectedMode = 'single';
-    bulletSpeedMult = 1.0;
-    bossHpMult = 1.0;
-    enterGameScreen();
+function goGame(mode, params = '') {
+    window.location.href = `game.html?mode=${mode}${params}`;
 }
 
 function showMultiplayerSetup(mode) {
-    selectedMode = mode;
+    currentMode = mode;
     document.getElementById('net-panel').style.display = 'block';
     document.getElementById('pvp-role-select').style.display = (mode === 'pvp') ? 'block' : 'none';
 }
 
-function backToMenu() {
-    gameRunning = false;
-    document.getElementById('main-wrapper').style.display = 'none';
-    document.getElementById('menu-container').style.display = 'block';
-    document.getElementById('net-panel').style.display = 'none';
-    if (peer) { peer.destroy(); peer = null; }
-    isConnected = false;
-}
-
-// --- WebRTC 5 碼連線 ---
 function generate5Code() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let res = '';
@@ -177,209 +93,16 @@ function generate5Code() {
 }
 
 function createRoom() {
-    roomCode = generate5Code();
-    myNetRole = 'host';
-    peer = new Peer('MBR-' + roomCode);
-
-    document.getElementById('status-text').innerText = `房間已建立！邀請碼：【 ${roomCode} 】`;
-
-    peer.on('connection', c => {
-        conn = c;
-        setupConn();
-        document.getElementById('status-text').innerText = `連線成功！正在進入遊戲...`;
-        setTimeout(startMultiplayerGame, 800);
-    });
-
-    peer.on('error', err => {
-        document.getElementById('status-text').innerText = '建立房間失敗，請重新嘗試。';
-    });
+    const roomCode = generate5Code();
+    const role = document.getElementById('role-select').value;
+    goGame(currentMode, `&role=host&room=${roomCode}&pvpRole=${role}`);
 }
 
 function joinRoom() {
     const inputCode = document.getElementById('room-code-input').value.trim().toUpperCase();
     if (inputCode.length !== 5) return alert('請輸入 5 位數邀請碼！');
-    
-    myNetRole = 'guest';
-    peer = new Peer();
-
-    peer.on('open', () => {
-        conn = peer.connect('MBR-' + inputCode);
-        
-        conn.on('open', () => {
-            setupConn();
-            startMultiplayerGame();
-        });
-
-        conn.on('error', err => {
-            alert('加入失敗，請檢查邀請碼是否正確！');
-        });
-    });
-
-    peer.on('error', err => {
-        alert('連線失敗，請重試！');
-    });
+    goGame(currentMode, `&role=guest&room=${inputCode}`);
 }
-
-function setupConn() {
-    isConnected = true;
-    conn.on('data', data => {
-        if (data.type === 'sync') {
-            if (myNetRole === 'guest') {
-                boss.x = data.bossX;
-                boss.hp = data.bossHp;
-                player.hp = data.playerHp;
-            } else {
-                player.x = data.playerX;
-                player.y = data.playerY;
-            }
-        } else if (data.type === 'boss_skill') {
-            castBossSkill(data.skill);
-        }
-    });
-}
-
-function startMultiplayerGame() {
-    if (selectedMode === 'pve') {
-        bulletSpeedMult = 1.35; // 雙人 PvE：子彈速度 1.35 倍
-        bossHpMult = 2.0;       // 雙人 PvE：Boss 血量 2 倍
-    } else {
-        bulletSpeedMult = 1.0;
-        bossHpMult = 1.0;
-    }
-    enterGameScreen();
-}
-
-function enterGameScreen() {
-    document.getElementById('menu-container').style.display = 'none';
-    document.getElementById('main-wrapper').style.display = 'flex';
-
-    if (selectedMode === 'pvp' && myNetRole === 'host' && document.getElementById('role-select').value === 'boss') {
-        document.getElementById('boss-mobile-bar').style.display = 'flex';
-        document.getElementById('normal-touch-bar').style.display = 'none';
-    } else {
-        document.getElementById('boss-mobile-bar').style.display = 'none';
-        document.getElementById('normal-touch-bar').style.display = 'flex';
-    }
-
-    boss.maxHp = 50 * bossHpMult;
-    boss.hp = boss.maxHp;
-    player.hp = player.maxHp;
-    enemyBullets.length = 0;
-    gameRunning = true;
-}
-
-// --- Boss 技能 ---
-function bossCastSkill(skillType) {
-    castBossSkill(skillType);
-    if (conn) conn.send({ type: 'boss_skill', skill: skillType });
-}
-
-function castBossSkill(type) {
-    if (type === 'fan') {
-        for (let i = -2; i <= 2; i++) {
-            enemyBullets.push({
-                x: boss.x + boss.width / 2, y: boss.y + boss.height,
-                vx: i * 2.5 * bulletSpeedMult, vy: 5 * bulletSpeedMult, radius: 7
-            });
-        }
-    } else if (type === 'laser') {
-        enemyBullets.push({
-            x: boss.x + boss.width / 2, y: boss.y + boss.height,
-            vx: 0, vy: 9 * bulletSpeedMult, radius: 15
-        });
-    }
-}
-
-function trySummonShield() {
-    // 護盾簡易效果
-    player.hp = Math.min(player.maxHp, player.hp + 2);
-}
-
-// --- 手機觸控 ---
-canvas.addEventListener('touchmove', e => {
-    if (!gameRunning) return;
-    e.preventDefault();
-    const rect = canvas.getBoundingClientRect();
-    const touch = e.touches[0];
-    const tx = (touch.clientX - rect.left) * (canvas.width / rect.width);
-    const ty = (touch.clientY - rect.top) * (canvas.height / rect.height);
-
-    if (selectedMode === 'pvp' && myNetRole === 'host' && document.getElementById('role-select').value === 'boss') {
-        boss.x = Math.max(playArea.left, Math.min(playArea.right - boss.width, tx - boss.width / 2));
-    } else {
-        player.x = Math.max(playArea.left, Math.min(playArea.right - player.width, tx - player.width / 2));
-        player.y = Math.max(150, Math.min(canvas.height - player.height, ty - player.height / 2));
-    }
-}, { passive: false });
-
-// --- 主循環 ---
-function update() {
-    if (!gameRunning) return;
-
-    if (selectedMode !== 'pvp' || myNetRole !== 'host') {
-        boss.x += boss.speed * boss.dir;
-        if (boss.x <= playArea.left || boss.x + boss.width >= playArea.right) boss.dir *= -1;
-        if (Math.random() < 0.03) castBossSkill('fan');
-    }
-
-    for (let i = enemyBullets.length - 1; i >= 0; i--) {
-        const eb = enemyBullets[i];
-        eb.x += eb.vx; eb.y += eb.vy;
-
-        const dx = (player.x + player.width / 2) - eb.x;
-        const dy = (player.y + player.height / 2) - eb.y;
-        if (Math.sqrt(dx * dx + dy * dy) < eb.radius + 15) {
-            player.hp = Math.max(0, player.hp - 1);
-            enemyBullets.splice(i, 1);
-            continue;
-        }
-        if (eb.y > canvas.height) enemyBullets.splice(i, 1);
-    }
-
-    if (isConnected && conn) {
-        if (myNetRole === 'host') {
-            conn.send({ type: 'sync', bossX: boss.x, bossHp: boss.hp, playerHp: player.hp });
-        } else {
-            conn.send({ type: 'sync', playerX: player.x, playerY: player.y });
-        }
-    }
-}
-
-function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-    ctx.strokeRect(playArea.left, 0, playArea.width, canvas.height);
-
-    // BOSS
-    ctx.fillStyle = '#ff4757';
-    ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
-    ctx.fillStyle = '#fff';
-    ctx.font = '14px Arial';
-    ctx.fillText(`BOSS HP: ${boss.hp} / ${boss.maxHp}`, boss.x, boss.y - 8);
-
-    // 玩家
-    ctx.fillStyle = '#00d2ff';
-    ctx.fillRect(player.x, player.y, player.width, player.height);
-    ctx.fillStyle = '#fff';
-    ctx.fillText(`HP: ${player.hp}`, player.x, player.y - 8);
-
-    // 子彈
-    ctx.fillStyle = '#FFD700';
-    enemyBullets.forEach(eb => {
-        ctx.beginPath();
-        ctx.arc(eb.x, eb.y, eb.radius, 0, Math.PI * 2);
-        ctx.fill();
-    });
-}
-
-function loop() {
-    update();
-    draw();
-    requestAnimationFrame(loop);
-}
-
-loop();
 </script>
 
 </body>
