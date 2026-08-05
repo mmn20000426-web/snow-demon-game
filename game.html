@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>會員制的打架 - 三階段 BOSS 戰</title>
     <title>會員制的打架</title>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; touch-action: none; }
         body {
@@ -13,12 +13,6 @@
             align-items: center; justify-content: center; min-height: 100vh; overflow-x: hidden;
         }
         h2 { margin: 2px 0 8px 0; color: #FFD700; text-align: center; font-size: 20px; }
-        
-        #mode-status-bar {
-            background: #222; border: 1px solid #FFD700; padding: 4px 10px; border-radius: 4px;
-            margin-bottom: 6px; font-size: 12px; color: #FFD700; font-weight: bold; text-align: center;
-        }
-
         #main-wrapper { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; max-width: 1000px; }
         #game-container {
             position: relative; box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
@@ -26,22 +20,11 @@
             align-items: center; width: min(100vw - 20px, 600px); flex-shrink: 0; z-index: 1;
         }
         canvas { background: #0d0f18; display: block; cursor: crosshair; width: 100%; height: auto; }
-        
+
         .mobile-touch-bar {
             width: 100%; background: #1a1c23; display: flex; justify-content: space-around;
             padding: 6px; border-top: 2px solid #333a4e;
         }
-        
-        /* BOSS 手機玩家專用技能按鈕區 (PvP) */
-        #boss-mobile-bar {
-            display: none; width: 100%; background: #2b1111; padding: 6px;
-            border-top: 2px solid #ff4757; justify-content: space-around; flex-wrap: wrap; gap: 4px;
-        }
-        .boss-skill-btn {
-            background: #e74c3c; color: white; border: 1px solid #fff; padding: 6px 10px;
-            font-size: 12px; font-weight: bold; border-radius: 6px; cursor: pointer;
-        }
-        .boss-skill-btn:active { transform: translateY(2px); background: #c0392b; }
 
         /* 手機 QTE 專用按鈕區 */
         #qte-mobile-bar {
@@ -65,7 +48,7 @@
         .mobile-btn:active { transform: scale(0.95); }
         .mobile-btn.control-btn { background: #ff4757; }
         .mobile-btn:disabled { background: #555 !important; color: #aaa; cursor: not-allowed; box-shadow: none; }
-        
+
         #sidebar-container { display: flex; flex-direction: column; gap: 8px; width: min(100vw - 20px, 600px); }
         #achievement-section {
             background: #1a1c23; border: 2px solid #FFD700; border-radius: 6px;
@@ -118,24 +101,14 @@
 <body>
 
 <h2>會員制的打架</h2>
-<div id="mode-status-bar">模式：載入中...</div>
 
 <div id="main-wrapper">
     <div id="game-container">
         <canvas id="gameCanvas" width="600" height="600"></canvas>
-        
+
         <div id="normal-touch-bar" class="mobile-touch-bar">
             <button id="btn-shield-ui" class="mobile-btn" onclick="trySummonShield()">🛡️ 護盾 [U]</button>
             <button class="mobile-btn control-btn" onclick="toggleControlPanel()">🎛️ 控制台 [I]</button>
-            <button class="mobile-btn" style="background:#8e44ad;" onclick="location.href='index.html'">🔙 返回主頁</button>
-        </div>
-
-        <div id="boss-mobile-bar">
-            <button class="boss-skill-btn" onclick="triggerOrangeFan()">🍊 扇形彈幕</button>
-            <button class="boss-skill-btn" onclick="triggerLaser()">⚡ 黃色雷射</button>
-            <button class="boss-skill-btn" onclick="triggerBurger()">🍔 漢堡肉</button>
-            <button class="boss-skill-btn" onclick="triggerNoodles()">🍜 麵條牆</button>
-            <button class="boss-skill-btn" style="background:#8e44ad;" onclick="location.href='index.html'">🔙 返回主頁</button>
         </div>
 
         <div id="qte-mobile-bar">
@@ -166,7 +139,7 @@
             <div id="control-panel">
                 <button class="close-panel-btn" onclick="toggleControlPanel()">❌ 關閉控制台</button>
                 <h3 id="panel-title-status">🎛️ 控制台</h3>
-                
+
                 <div class="panel-section">
                     <h4>⚡ 即時狀態控制</h4>
                     <div class="toggle-item">
@@ -219,66 +192,6 @@
 <audio id="win4Bgm" src="win4.mp3" preload="auto"></audio>
 
 <script>
-// === 1. 解析網址參數與模式設定 ===
-const urlParams = new URLSearchParams(window.location.search);
-const gameMode = urlParams.get('mode') || 'single'; // 'single', 'pve', 'pvp'
-const pvpRole = urlParams.get('role') || 'player';  // 'host' (BOSS) 或 'guest' (玩家)
-const roomCode = urlParams.get('room') || '';
-
-// 依模式設定倍率
-let bulletSpeedMult = (gameMode === 'pve') ? 1.35 : 1.0; // 雙人 PvE：子彈 1.35 倍速
-let bossHpMult = (gameMode === 'pve') ? 2.0 : 1.0;       // 雙人 PvE：Boss 血量 2 倍
-
-// 顯示模式說明
-const statusBar = document.getElementById('mode-status-bar');
-if (gameMode === 'single') {
-    statusBar.innerText = '🥊 模式：單人赤石 (原版)';
-} else if (gameMode === 'pve') {
-    statusBar.innerText = '👥 模式：雙人赤石 - PvE ( Boss血量 2 倍 / 子彈 1.35 倍速 )';
-} else if (gameMode === 'pvp') {
-    statusBar.innerText = `⚔️ 模式：雙人 PvP | 身份：${pvpRole === 'host' ? '👹 BOSS (房主)' : '🛡️ 玩家 (加入者)'} | 邀請碼：【 ${roomCode} 】`;
-    if (pvpRole === 'host') {
-        document.getElementById('boss-mobile-bar').style.display = 'flex';
-        document.getElementById('normal-touch-bar').style.display = 'none';
-    }
-}
-
-// WebRTC Peer 連線
-let peer = null, conn = null;
-if (gameMode === 'pvp' && roomCode) {
-    if (pvpRole === 'host') {
-        peer = new Peer('MBR-' + roomCode);
-        peer.on('connection', c => { conn = c; setupConn(); });
-    } else {
-        peer = new Peer();
-        peer.on('open', () => {
-            conn = peer.connect('MBR-' + roomCode);
-            conn.on('open', () => setupConn());
-        });
-    }
-}
-
-function setupConn() {
-    conn.on('data', data => {
-        if (data.type === 'sync') {
-            if (pvpRole === 'guest') {
-                boss.x = data.bossX;
-                boss.hp = data.bossHp;
-            } else {
-                player.x = data.playerX;
-                player.y = data.playerY;
-                player.hp = data.playerHp;
-            }
-        } else if (data.type === 'skill') {
-            if (data.skill === 'laser') triggerLaser();
-            if (data.skill === 'burger') triggerBurger();
-            if (data.skill === 'noodle') triggerNoodles();
-            if (data.skill === 'orange') triggerOrangeFan();
-        }
-    });
-}
-
-// DOM & Audio
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -361,7 +274,7 @@ const player = {
     invincibleFrame: 0
 };
 
-// Boss 基礎資料 (套用血量倍率)
+// Boss 基礎資料
 const boss = {
     x: playArea.left + playArea.width / 2 - 60,
     y: 35,
@@ -369,10 +282,11 @@ const boss = {
     height: 70,
     dir: 1,
     speed: 2.5,
-    hp: 50 * bossHpMult,
-    maxHp: 50 * bossHpMult
+    hp: 50,
+    maxHp: 50
 };
 
+// Boss 圖片載入後將尺寸設定為原圖比例/大小
 function updateBossDimensions(img) {
     if (img && img.complete && img.naturalWidth !== 0) {
         const maxWidth = 160;
@@ -444,28 +358,10 @@ function healPlayerToFull() {
     player.hp = player.maxHp;
 }
 
-function triggerOrangeFan() {
-    const count = 3;
-    const startAngle = Math.PI * 0.35;
-    const endAngle = Math.PI * 0.65;
-    const step = count > 1 ? (endAngle - startAngle) / (count - 1) : 0;
-
-    for (let i = 0; i < count; i++) {
-        const angle = startAngle + step * i;
-        enemyBullets.push({
-            x: boss.x + boss.width / 2, y: boss.y + boss.height,
-            vx: Math.cos(angle) * 4 * bulletSpeedMult, vy: Math.sin(angle) * 4 * bulletSpeedMult,
-            width: 35, height: 10, angle: angle, color: '#FF7F50', type: 'rect', damage: 1
-        });
-    }
-    if (conn && pvpRole === 'host') conn.send({ type: 'skill', skill: 'orange' });
-}
-
 function triggerLaser() {
     markConsoleUsed();
     isLaserActive = true;
     laserDuration = 45;
-    if (conn && pvpRole === 'host') conn.send({ type: 'skill', skill: 'laser' });
 }
 
 function triggerNoodles() {
@@ -477,7 +373,6 @@ function triggerNoodles() {
             width: 18, height: 75, angle: Math.random() * Math.PI, duration: 240
         });
     }
-    if (conn && pvpRole === 'host') conn.send({ type: 'skill', skill: 'noodle' });
 }
 
 function triggerBurger() {
@@ -490,10 +385,9 @@ function triggerBurger() {
 
     burgerSteaks.push({
         x: startX, y: startY, targetX: targetX, targetY: targetY,
-        vx: Math.cos(angle) * 7 * bulletSpeedMult, vy: Math.sin(angle) * 7 * bulletSpeedMult,
+        vx: Math.cos(angle) * 7, vy: Math.sin(angle) * 7,
         width: 38, height: 26, isStationary: false, stayDuration: 180
     });
-    if (conn && pvpRole === 'host') conn.send({ type: 'skill', skill: 'burger' });
 }
 
 function triggerMedkit() {
@@ -535,9 +429,6 @@ function spawnEnemyBullets() {
     const isBossPaused = document.getElementById('sw-pause-boss').checked;
     if (isBossPaused) return;
 
-    // 如果是 PvP 且由玩家控制 Boss，跳過自動攻擊
-    if (gameMode === 'pvp' && pvpRole === 'host') return;
-
     const mult = getPhaseMultipliers();
 
     const swOrange = document.getElementById('sw-orange').checked;
@@ -550,20 +441,32 @@ function spawnEnemyBullets() {
     const swMedkit = document.getElementById('sw-medkit').checked;
 
     if (swOrange && frameCount % Math.max(1, Math.round(25 * mult.freq)) === 0) {
-        triggerOrangeFan();
+        const count = 3;
+        const startAngle = Math.PI * 0.35;
+        const endAngle = Math.PI * 0.65;
+        const step = count > 1 ? (endAngle - startAngle) / (count - 1) : 0;
+
+        for (let i = 0; i < count; i++) {
+            const angle = startAngle + step * i;
+            enemyBullets.push({
+                x: boss.x + boss.width / 2, y: boss.y + boss.height,
+                vx: Math.cos(angle) * 4, vy: Math.sin(angle) * 4,
+                width: 35, height: 10, angle: angle, color: '#FF7F50', type: 'rect', damage: 1
+            });
+        }
     }
 
     if (swGreen && frameCount % Math.max(1, Math.round(28 * mult.freq)) === 0) {
         enemyBullets.push({
             x: Math.random() * (playArea.width - 30) + playArea.left + 15,
-            y: 0, vx: 0, vy: 7 * bulletSpeedMult, width: 12, height: 45, angle: 0, color: '#2ed573', type: 'rect', damage: 1
+            y: 0, vx: 0, vy: 7, width: 12, height: 45, angle: 0, color: '#2ed573', type: 'rect', damage: 1
         });
     }
 
     if (swBrown && frameCount % Math.max(1, Math.round(20 * mult.freq)) === 0) {
         enemyBullets.push({
             x: boss.x + boss.width / 2, y: boss.y + boss.height,
-            vx: (Math.random() - 0.5) * 3 * bulletSpeedMult, vy: 5 * bulletSpeedMult, radius: 6, color: '#8B4513', type: 'circle', damage: 1
+            vx: (Math.random() - 0.5) * 3, vy: 5, radius: 6, color: '#8B4513', type: 'circle', damage: 1
         });
     }
 
@@ -575,28 +478,48 @@ function spawnEnemyBullets() {
         const angle = Math.atan2(targetY - startY, targetX - startX);
 
         puddings.push({
-            x: startX, y: startY, vx: Math.cos(angle) * 5 * bulletSpeedMult, vy: Math.sin(angle) * 5 * bulletSpeedMult, radius: 16
+            x: startX, y: startY, vx: Math.cos(angle) * 5, vy: Math.sin(angle) * 5, radius: 16
         });
     }
 
     if (swLaser) {
         laserTimer++;
         if (laserTimer >= Math.round(540 * mult.cd)) {
-            triggerLaser();
+            isLaserActive = true;
+            laserDuration = 45;
             laserTimer = 0;
         }
     }
 
     if (swBurger && frameCount % Math.max(1, Math.round(360 * mult.cd)) === 0) {
-        triggerBurger();
+        const startX = boss.x + boss.width / 2;
+        const startY = boss.y + boss.height;
+        const targetX = Math.random() * (playArea.width - 80) + playArea.left + 40;
+        const targetY = Math.random() * (canvas.height - 250) + 150;
+        const angle = Math.atan2(targetY - startY, targetX - startX);
+
+        burgerSteaks.push({
+            x: startX, y: startY, targetX: targetX, targetY: targetY,
+            vx: Math.cos(angle) * 7, vy: Math.sin(angle) * 7,
+            width: 38, height: 26, isStationary: false, stayDuration: 180
+        });
     }
 
     if (swNoodle && frameCount % Math.max(1, Math.round(360 * mult.cd)) === 0) {
-        triggerNoodles();
+        for (let i = 0; i < 4; i++) {
+            noodles.push({
+                x: Math.random() * (playArea.width - 60) + playArea.left + 30,
+                y: Math.random() * (canvas.height - 300) + 180,
+                width: 18, height: 75, angle: Math.random() * Math.PI, duration: 240
+            });
+        }
     }
 
     if (swMedkit && frameCount % 240 === 0) {
-        triggerMedkit();
+        medkits.push({
+            x: Math.random() * (playArea.width - 35) + playArea.left + 15,
+            y: -30, vy: 2.5, width: 30, height: 30
+        });
     }
 }
 
@@ -628,11 +551,7 @@ function handleQTEInput(pressedKey) {
         if (qteIndex >= qteSequence.length) {
             qteActive = false;
             document.getElementById('qte-mobile-bar').classList.remove('active');
-            if (pvpRole === 'host' && gameMode === 'pvp') {
-                document.getElementById('boss-mobile-bar').style.display = 'flex';
-            } else {
-                document.getElementById('normal-touch-bar').style.display = 'flex';
-            }
+            document.getElementById('normal-touch-bar').style.display = 'flex';
             triggerQTESuccess();
         }
     }
@@ -655,8 +574,8 @@ function triggerQTESuccess() {
         npc3Defeated = true;
         bossPhase = 3;
         updateBossDimensions(imgBoss3);
-        boss.hp = 30 * bossHpMult;
-        boss.maxHp = 30 * bossHpMult;
+        boss.hp = 30;
+        boss.maxHp = 30;
         qteLaserActive = false;
         qteNpc3Shield = null;
     }, 1500);
@@ -665,12 +584,15 @@ function triggerQTESuccess() {
 function triggerQTEFail() {
     qteActive = false;
     document.getElementById('qte-mobile-bar').classList.remove('active');
-    if (pvpRole === 'host' && gameMode === 'pvp') {
-        document.getElementById('boss-mobile-bar').style.display = 'flex';
-    } else {
-        document.getElementById('normal-touch-bar').style.display = 'flex';
-    }
+    document.getElementById('normal-touch-bar').style.display = 'flex';
     triggerGameOver();
+}
+
+function firePlayerBullet() {
+    if (qteActive) return;
+    playerBullets.push({
+        x: player.x + player.width / 2, y: player.y, vy: -10, radius: 5, color: '#FFD700'
+    });
 }
 
 function trySummonShield() {
@@ -707,10 +629,11 @@ function triggerWin() {
     gameWin = true;
     bgm.pause(); bgm.currentTime = 0;
 
+    // 判斷 1 HP 擊敗 Boss 條件（一轉攻勢）
     if (player.hp === 1) {
         is1HpWinMode = true;
         unlockAchievement('ach-5', 'ach5', '一轉攻勢');
-        win4Bgm.currentTime = 0; win4Bgm.play().catch(() => {});
+        win4Bgm.currentTime = 0; win4Bgm.play().catch(() => {}); // 播放 win4.mp3
     } else if (hasUsedConsole) {
         unlockAchievement('ach-3', 'ach3', '低調的黑客');
         win2Bgm.currentTime = 0; win2Bgm.play().catch(() => {});
@@ -798,13 +721,8 @@ function updatePlayerPos(evt) {
     const touchX = (evt.clientX - rect.left) * scaleX;
     const touchY = (evt.clientY - rect.top) * scaleY;
 
-    // PvP 當 Boss 的情況：控制 Boss 移動
-    if (gameMode === 'pvp' && pvpRole === 'host') {
-        boss.x = Math.max(playArea.left, Math.min(playArea.right - boss.width, touchX - boss.width / 2));
-    } else {
-        player.x = touchX - player.width / 2;
-        player.y = touchY - player.height / 2;
-    }
+    player.x = touchX - player.width / 2;
+    player.y = touchY - player.height / 2;
 }
 
 function resetGame() {
@@ -822,13 +740,7 @@ function resetGame() {
     qteSuccessMsgTimer = 0;
 
     document.getElementById('qte-mobile-bar').classList.remove('active');
-    if (pvpRole === 'host' && gameMode === 'pvp') {
-        document.getElementById('boss-mobile-bar').style.display = 'flex';
-        document.getElementById('normal-touch-bar').style.display = 'none';
-    } else {
-        document.getElementById('normal-touch-bar').style.display = 'flex';
-        document.getElementById('boss-mobile-bar').style.display = 'none';
-    }
+    document.getElementById('normal-touch-bar').style.display = 'flex';
 
     resetControlPanelSwitches();
 
@@ -848,7 +760,7 @@ function resetGame() {
     player.speed = player.baseSpeed;
 
     boss.x = playArea.left + playArea.width / 2 - 60;
-    boss.hp = 50 * bossHpMult; boss.maxHp = 50 * bossHpMult;
+    boss.hp = 50; boss.maxHp = 50;
 
     isNpc3SpecialText = false;
     if (npc3SpecialTextTimer) clearTimeout(npc3SpecialTextTimer);
@@ -857,9 +769,44 @@ function resetGame() {
     winBgm.pause(); winBgm.currentTime = 0;
     win2Bgm.pause(); win2Bgm.currentTime = 0;
     win3Bgm.pause(); win3Bgm.currentTime = 0;
-    win4Bgm.pause(); win4Bgm.currentTime = 0;
+    win4Bgm.pause(); win4Bgm.currentTime = 0; // 重置 win4 音樂
     bgm.currentTime = 0;
     playBGM();
+}
+
+function checkPointRectCollision(px, py, rect) {
+    if (rect.type === 'circle') {
+        const dx = px - rect.x; const dy = py - rect.y;
+        return Math.sqrt(dx * dx + dy * dy) < rect.radius + player.radius;
+    } else {
+        const halfW = (rect.width || 20) / 2;
+        const halfH = (rect.height || 10) / 2;
+        return (px > rect.x - halfW - 4 && px < rect.x + halfW + 4 && py > rect.y - halfH - 4 && py < rect.y + halfH + 4);
+    }
+}
+
+function checkAABBCollision(rect1, rect2) {
+    return (
+        rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x &&
+        rect1.y < rect2.y + rect2.height && rect1.y + rect1.height > rect2.y
+    );
+}
+
+function checkPointNoodleCollision(px, py, nd) {
+    const cx = nd.x; const cy = nd.y;
+    const cos = Math.cos(-nd.angle); const sin = Math.sin(-nd.angle);
+    const dx = px - cx; const dy = py - cy;
+    const rx = cos * dx - sin * dy; const ry = sin * dx + cos * dy;
+    return Math.abs(rx) <= nd.width / 2 + 5 && Math.abs(ry) <= nd.height / 2 + 5;
+}
+
+function checkShieldCollision(shield, eb) {
+    const w = eb.width || (eb.radius * 2);
+    const h = eb.height || (eb.radius * 2);
+    return (
+        eb.x + w / 2 > shield.x && eb.x - w / 2 < shield.x + shield.width &&
+        eb.y + h / 2 > shield.y && eb.y - h / 2 < shield.y + shield.height
+    );
 }
 
 function update() {
@@ -867,15 +814,6 @@ function update() {
 
     frameCount++;
     score++;
-
-    // PvP 同步
-    if (conn && conn.open) {
-        if (pvpRole === 'host') {
-            conn.send({ type: 'sync', bossX: boss.x, bossHp: boss.hp });
-        } else {
-            conn.send({ type: 'sync', playerX: player.x, playerY: player.y, playerHp: player.hp });
-        }
-    }
 
     if (shieldCooldown > 0) shieldCooldown--;
     if (qteSuccessMsgTimer > 0) qteSuccessMsgTimer--;
@@ -896,74 +834,617 @@ function update() {
 
     if (player.invincibleFrame > 0) player.invincibleFrame--;
 
-    // Boss 自動左右巡邏 (非 PvP 房主操控時)
-    if (!(gameMode === 'pvp' && pvpRole === 'host')) {
-        const isBossPaused = document.getElementById('sw-pause-boss').checked;
-        if (!isBossPaused) {
-            boss.x += boss.speed * boss.dir;
-            if (boss.x <= playArea.left || boss.x + boss.width >= playArea.right) boss.dir *= -1;
+    if (qteActive) {
+        qteTimer--;
+        if (qteTimer <= 0) {
+            triggerQTEFail();
+            return;
+        }
+    }
+
+    let inSeal = false;
+    const playerCenterX = player.x + player.width / 2;
+    const playerCenterY = player.y + player.height / 2;
+
+    for (let i = sealZones.length - 1; i >= 0; i--) {
+        const zone = sealZones[i];
+        zone.duration--;
+        const dx = playerCenterX - zone.x; const dy = playerCenterY - zone.y;
+        if (Math.sqrt(dx * dx + dy * dy) < zone.radius) inSeal = true;
+        if (zone.duration <= 0) sealZones.splice(i, 1);
+    }
+
+    player.speed = inSeal ? player.baseSpeed * 0.4 : player.baseSpeed;
+
+    const oldX = player.x; const oldY = player.y;
+
+    if (keys['ArrowLeft'] || keys['a'] || keys['A']) player.x -= player.speed;
+    if (keys['ArrowRight'] || keys['d'] || keys['D']) player.x += player.speed;
+    if (keys['ArrowUp'] || keys['w'] || keys['W']) player.y -= player.speed;
+    if (keys['ArrowDown'] || keys['s'] || keys['S']) player.y += player.speed;
+
+    if ((keys['Space'] || keys['KeySpace']) && frameCount % 8 === 0) firePlayerBullet();
+    if (isDragging && frameCount % 8 === 0) firePlayerBullet();
+
+    player.x = Math.max(playArea.left, Math.min(playArea.right - player.width, player.x));
+    player.y = Math.max(bossWallY, Math.min(canvas.height - player.height, player.y));
+
+    for (let nd of noodles) {
+        if (checkPointNoodleCollision(player.x + player.width / 2, player.y + player.height / 2, nd)) {
+            player.x = oldX; player.y = oldY; break;
+        }
+    }
+
+    shields.forEach(s => {
+        s.x = player.x + player.width / 2 - s.width / 2;
+        s.y = player.y - s.height - 5;
+    });
+
+    const isBossPaused = document.getElementById('sw-pause-boss').checked;
+    if (!isBossPaused && !qteActive) {
+        boss.x += boss.speed * boss.dir;
+        if (boss.x <= playArea.left + 10 || boss.x + boss.width >= playArea.right - 10) {
+            boss.dir *= -1;
         }
     }
 
     spawnEnemyBullets();
 
-    // 彈幕與玩家碰撞判定
+    for (let i = noodles.length - 1; i >= 0; i--) {
+        noodles[i].duration--;
+        if (noodles[i].duration <= 0) noodles.splice(i, 1);
+    }
+
+    for (let i = medkits.length - 1; i >= 0; i--) {
+        const m = medkits[i];
+        m.y += m.vy;
+        if (checkAABBCollision(player, m)) {
+            player.hp = Math.min(player.maxHp, player.hp + 1);
+            medkits.splice(i, 1);
+            continue;
+        }
+        if (m.y > canvas.height + 50) medkits.splice(i, 1);
+    }
+
+    if (isLaserActive) {
+        laserDuration--;
+        const laserX = boss.x + boss.width / 2;
+        const laserWidth = 30;
+
+        if (
+            player.invincibleFrame === 0 &&
+            playerCenterX > laserX - laserWidth / 2 &&
+            playerCenterX < laserX + laserWidth / 2 &&
+            playerCenterY > boss.y + boss.height
+        ) {
+            player.hp -= 2; tookDamage = true;
+            player.invincibleFrame = 30;
+            if (player.hp <= 0) { triggerGameOver(); return; }
+        }
+        if (laserDuration <= 0) isLaserActive = false;
+    }
+
+    for (let i = burgerSteaks.length - 1; i >= 0; i--) {
+        const b = burgerSteaks[i];
+        if (!b.isStationary) {
+            b.x += b.vx; b.y += b.vy;
+            const distToTarget = Math.sqrt(Math.pow(b.x - b.targetX, 2) + Math.pow(b.y - b.targetY, 2));
+            if (distToTarget < 10) { b.x = b.targetX; b.y = b.targetY; b.isStationary = true; }
+        } else {
+            b.stayDuration--;
+            if (b.stayDuration <= 0) { burgerSteaks.splice(i, 1); continue; }
+        }
+
+        enemyBullets.forEach(eb => {
+            if (
+                eb.x > b.x - b.width / 2 && eb.x < b.x + b.width / 2 &&
+                eb.y > b.y - b.height / 2 && eb.y < b.y + b.height / 2
+            ) {
+                eb.damage = 2; eb.isEnhanced = true;
+            }
+        });
+    }
+
+    for (let i = puddings.length - 1; i >= 0; i--) {
+        const p = puddings[i];
+        p.x += p.vx; p.y += p.vy;
+
+        const dx = playerCenterX - p.x; const dy = playerCenterY - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        let hitPlayer = false;
+        if (player.invincibleFrame === 0 && dist < p.radius + player.radius) {
+            player.hp -= 2; tookDamage = true;
+            player.invincibleFrame = 30; hitPlayer = true;
+            if (player.hp <= 0) { triggerGameOver(); return; }
+        }
+
+        if (hitPlayer || p.y >= canvas.height - 20 || p.x <= playArea.left || p.x >= playArea.right) {
+            sealZones.push({ x: p.x, y: p.y, radius: 45, duration: 180 });
+            puddings.splice(i, 1);
+        }
+    }
+
+    for (let i = playerBullets.length - 1; i >= 0; i--) {
+        const pb = playerBullets[i];
+        pb.y += pb.vy;
+
+        let blockedByNoodle = false;
+        for (let nd of noodles) {
+            if (checkPointNoodleCollision(pb.x, pb.y, nd)) { blockedByNoodle = true; break; }
+        }
+        if (blockedByNoodle) { playerBullets.splice(i, 1); continue; }
+
+        if (pb.x > boss.x && pb.x < boss.x + boss.width && pb.y > boss.y && pb.y < boss.y + boss.height) {
+            boss.hp--;
+            playerBullets.splice(i, 1);
+
+            if (bossPhase === 1 && boss.hp <= 10) {
+                bossPhase = 2;
+                updateBossDimensions(imgBoss2);
+                player.maxHp += 10;
+                player.hp += 10;
+                boss.hp = 80;
+                boss.maxHp = 80;
+            }
+            else if (bossPhase === 2 && boss.hp <= 0) {
+                boss.hp = 0;
+                startQTE();
+            }
+            else if (bossPhase === 3 && boss.hp <= 0) {
+                triggerWin();
+                return;
+            }
+            continue;
+        }
+        if (pb.y < -10) playerBullets.splice(i, 1);
+    }
+
     for (let i = enemyBullets.length - 1; i >= 0; i--) {
         const eb = enemyBullets[i];
         eb.x += eb.vx; eb.y += eb.vy;
 
-        const dx = (player.x + player.width / 2) - eb.x;
-        const dy = (player.y + player.height / 2) - eb.y;
-        if (Math.sqrt(dx * dx + dy * dy) < (eb.radius || 10) + player.radius) {
-            if (player.invincibleFrame <= 0) {
-                player.hp = Math.max(0, player.hp - (eb.damage || 1));
-                player.invincibleFrame = 20;
-                tookDamage = true;
-                if (player.hp <= 0) triggerGameOver();
-            }
-            enemyBullets.splice(i, 1);
-            continue;
+        let blockedByNoodle = false;
+        for (let nd of noodles) {
+            if (checkPointNoodleCollision(eb.x, eb.y, nd)) { blockedByNoodle = true; break; }
         }
-        if (eb.y > canvas.height) enemyBullets.splice(i, 1);
+        if (blockedByNoodle) { enemyBullets.splice(i, 1); continue; }
+
+        let blockedByShield = false;
+        for (let j = shields.length - 1; j >= 0; j--) {
+            if (checkShieldCollision(shields[j], eb)) {
+                shields.splice(j, 1); enemyBullets.splice(i, 1);
+                blockedByShield = true; break;
+            }
+        }
+        if (blockedByShield) continue;
+
+        if (player.invincibleFrame === 0) {
+            if (checkPointRectCollision(playerCenterX, playerCenterY, eb)) {
+                player.hp -= (eb.damage || 1); tookDamage = true;
+                player.invincibleFrame = 30; enemyBullets.splice(i, 1);
+                if (player.hp <= 0) { triggerGameOver(); return; }
+                continue;
+            }
+        }
+
+        if (eb.y > canvas.height + 50 || eb.y < -50 || eb.x < -50 || eb.x > canvas.width + 50) {
+            enemyBullets.splice(i, 1);
+        }
+    }
+}
+
+function drawWineGlass(x, y) {
+    ctx.save();
+    ctx.strokeStyle = '#ffffff'; ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - 12, y - 25); ctx.lineTo(x + 12, y - 25); ctx.lineTo(x, y - 10);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+
+    ctx.beginPath(); ctx.moveTo(x, y - 10); ctx.lineTo(x, y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - 10, y); ctx.lineTo(x + 10, y); ctx.stroke();
+    ctx.restore();
+}
+
+function drawSpeechBubble(text, x, y, alignLeft = true) {
+    ctx.save();
+    ctx.font = 'bold 11px "Microsoft JhengHei", Arial';
+    const textWidth = ctx.measureText(text).width;
+    const padding = 5;
+    const bubbleW = textWidth + padding * 2;
+    const bubbleH = 20;
+    let bubbleX = alignLeft ? x + 8 : x - bubbleW - 8;
+    let bubbleY = y - 10;
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.roundRect(bubbleX, bubbleY, bubbleW, bubbleH, 4);
+    ctx.fill(); ctx.stroke();
+
+    ctx.fillStyle = '#111'; ctx.textAlign = 'center';
+    ctx.fillText(text, bubbleX + bubbleW / 2, bubbleY + 14);
+    ctx.restore();
+}
+
+function drawAllNPCs() {
+    const npcW = 50; const npcH = 50;
+    let leftX = 15; let rightX = 535;
+
+    const leftPositions = [
+        { key: 'npc1', y: 110 },
+        { key: 'npc2', y: 260 }
+    ];
+
+    leftPositions.forEach(item => {
+        let text = "我修院加油啊!";
+        if (gameOver) text = "哎呀!!害死我力";
+        else if (gameWin) text = "好結局";
+
+        const img = npcImages[item.key];
+        if (img.complete && img.naturalWidth !== 0) ctx.drawImage(img, leftX, item.y, npcW, npcH);
+        else { ctx.fillStyle = '#9b59b6'; ctx.fillRect(leftX, item.y, npcW, npcH); }
+        drawSpeechBubble(text, leftX + npcW / 2, item.y - 10, true);
+    });
+
+    if (!npc3Defeated && !qteLaserActive) {
+        let text = isNpc3SpecialText ? "鴨蛋摸鴨蛋，牡蠣摸牡蠣" : "我修院加油啊!";
+        const img = npcImages.npc3;
+        if (img.complete && img.naturalWidth !== 0) ctx.drawImage(img, leftX, 410, npcW, npcH);
+        else { ctx.fillStyle = '#9b59b6'; ctx.fillRect(leftX, 410, npcW, npcH); }
+        drawSpeechBubble(text, leftX + npcW / 2, 410 - 10, true);
+    }
+
+    if (qteActive && !bnpcDefeated) {
+        const bnpc1X = boss.x - 60;
+        const bnpc2X = boss.x + boss.width + 10;
+        const bnpcY = boss.y + 10;
+
+        const img1 = npcImages.bnpc1;
+        if (img1.complete && img1.naturalWidth !== 0) ctx.drawImage(img1, bnpc1X, bnpcY, npcW, npcH);
+        else { ctx.fillStyle = '#e67e22'; ctx.fillRect(bnpc1X, bnpcY, npcW, npcH); }
+        drawSpeechBubble("一庫走", bnpc1X + npcW / 2, bnpcY - 10, false);
+
+        const img2 = npcImages.bnpc2;
+        if (img2.complete && img2.naturalWidth !== 0) ctx.drawImage(img2, bnpc2X, bnpcY, npcW, npcH);
+        else { ctx.fillStyle = '#e67e22'; ctx.fillRect(bnpc2X, bnpcY, npcW, npcH); }
+        drawSpeechBubble("一庫走", bnpc2X + npcW / 2, bnpcY - 10, true);
+    } else if (!bnpcDefeated) {
+        const rightPositions = [
+            { key: 'bnpc1', y: 110 },
+            { key: 'bnpc2', y: 260 },
+            { key: 'bnpc3', y: 410 }
+        ];
+        rightPositions.forEach(item => {
+            let text = "淳平君加油啊!";
+            if (gameOver) text = "哎呀!!害死我力";
+            else if (gameWin) text = "壞結局";
+
+            const img = npcImages[item.key];
+            if (img.complete && img.naturalWidth !== 0) ctx.drawImage(img, rightX, item.y, npcW, npcH);
+            else { ctx.fillStyle = '#e67e22'; ctx.fillRect(rightX, item.y, npcW, npcH); }
+            drawSpeechBubble(text, rightX + npcW / 2, item.y - 10, false);
+        });
+    }
+}
+
+function drawQTEOverlay() {
+    if (!qteActive) return;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.15)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const bnpc1X = boss.x - 35;
+    const bnpc2X = boss.x + boss.width + 35;
+
+    ctx.fillStyle = 'rgba(255, 230, 0, 0.25)';
+    ctx.fillRect(playArea.left, boss.y + boss.height, playArea.width, canvas.height);
+
+    ctx.fillStyle = 'rgba(255, 255, 0, 0.4)';
+    ctx.fillRect(bnpc1X - 10, boss.y + 60, 20, canvas.height);
+    ctx.fillRect(bnpc2X - 10, boss.y + 60, 20, canvas.height);
+
+    ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath();
+    ctx.moveTo(playArea.left, canvas.height - 100); ctx.lineTo(playArea.right, canvas.height - 100);
+    ctx.stroke();
+
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 22px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(`⚠️ 點擊或按下 4 個對應按鍵以發動盾牌！`, canvas.width / 2, 190);
+
+    const secondsLeft = (qteTimer / 60).toFixed(1);
+    ctx.fillStyle = '#ff4757';
+    ctx.font = 'bold 26px Arial';
+    ctx.fillText(`剩餘時間: ${secondsLeft}s`, canvas.width / 2, 225);
+
+    const startX = canvas.width / 2 - (qteSequence.length * 30);
+    qteSequence.forEach((keyChar, idx) => {
+        const boxX = startX + idx * 60;
+        const boxY = 250;
+
+        if (idx < qteIndex) ctx.fillStyle = '#2ed573';
+        else if (idx === qteIndex) ctx.fillStyle = '#FFD700';
+        else ctx.fillStyle = '#555555';
+
+        ctx.fillRect(boxX, boxY, 50, 50);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(boxX, boxY, 50, 50);
+
+        ctx.fillStyle = '#111111';
+        ctx.font = 'bold 24px Arial';
+        ctx.fillText(keyChar, boxX + 25, boxY + 34);
+    });
+
+    ctx.restore();
+}
+
+function drawQTEReflection() {
+    if (qteLaserActive) {
+        ctx.save();
+        if (qteNpc3Shield) {
+            if (imgShield.complete && imgShield.naturalWidth !== 0) {
+                ctx.drawImage(imgShield, qteNpc3Shield.x, qteNpc3Shield.y, qteNpc3Shield.width, qteNpc3Shield.height);
+            } else {
+                ctx.fillStyle = '#1e90ff';
+                ctx.fillRect(qteNpc3Shield.x, qteNpc3Shield.y, qteNpc3Shield.width, qteNpc3Shield.height);
+            }
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(qteNpc3Shield.x, qteNpc3Shield.y, qteNpc3Shield.width, qteNpc3Shield.height);
+        }
+
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.9)';
+        ctx.fillRect(playArea.left, 0, playArea.width, qteNpc3Shield.y);
+
+        ctx.restore();
+    }
+
+    if (qteSuccessMsgTimer > 0) {
+        ctx.save();
+        ctx.fillStyle = '#FFD700';
+        ctx.font = 'bold 22px "Microsoft JhengHei", Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('boss已經力竭，快點一轉攻勢吧(喜)', canvas.width / 2, canvas.height / 2);
+        ctx.restore();
     }
 }
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 遊戲邊界
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+    for (let i = 0; i < 20; i++) {
+        const sx = (Math.sin(i * 99 + frameCount * 0.05) * 0.5 + 0.5) * canvas.width;
+        const sy = ((i * 35 + frameCount * 3) % canvas.height);
+        ctx.fillRect(sx, sy, 2, 2);
+    }
+
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-    ctx.strokeRect(playArea.left, 0, playArea.width, canvas.height);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(playArea.left, 0); ctx.lineTo(playArea.left, canvas.height);
+    ctx.moveTo(playArea.right, 0); ctx.lineTo(playArea.right, canvas.height);
+    ctx.stroke();
 
-    // BOSS 繪製
-    if (imgBoss1.complete) ctx.drawImage(imgBoss1, boss.x, boss.y, boss.width, boss.height);
-    else { ctx.fillStyle = '#ff4757'; ctx.fillRect(boss.x, boss.y, boss.width, boss.height); }
-    ctx.fillStyle = '#fff'; ctx.font = '14px Arial';
-    ctx.fillText(`BOSS HP: ${Math.ceil(boss.hp)} / ${boss.maxHp}`, boss.x, boss.y - 8);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 71, 87, 0.6)';
+    ctx.setLineDash([8, 6]);
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(playArea.left, bossWallY);
+    ctx.lineTo(playArea.right, bossWallY);
+    ctx.stroke();
+    ctx.restore();
 
-    // 玩家繪製
-    if (imgPlayer.complete) ctx.drawImage(imgPlayer, player.x, player.y, player.width, player.height);
-    else { ctx.fillStyle = '#00d2ff'; ctx.fillRect(player.x, player.y, player.width, player.height); }
-    ctx.fillStyle = '#fff';
-    ctx.fillText(`HP: ${player.hp}`, player.x, player.y - 8);
-
-    // 子彈繪製
-    ctx.fillStyle = '#FFD700';
-    enemyBullets.forEach(eb => {
-        ctx.beginPath();
-        if (eb.type === 'circle') ctx.arc(eb.x, eb.y, eb.radius, 0, Math.PI * 2);
-        else ctx.rect(eb.x - eb.width / 2, eb.y - eb.height / 2, eb.width, eb.height);
-        ctx.fill();
+    sealZones.forEach(z => {
+        ctx.fillStyle = 'rgba(211, 84, 0, 0.35)';
+        ctx.beginPath(); ctx.arc(z.x, z.y, z.radius, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#e67e22'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle = '#f39c12'; ctx.font = 'bold 12px Arial'; ctx.textAlign = 'center';
+        ctx.fillText('封印中', z.x, z.y + 4);
     });
+
+    noodles.forEach(nd => {
+        ctx.save();
+        ctx.translate(nd.x, nd.y); ctx.rotate(nd.angle);
+        ctx.fillStyle = '#F1C40F'; ctx.strokeStyle = '#D35400'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.roundRect(-nd.width / 2, -nd.height / 2, nd.width, nd.height, 8);
+        ctx.fill(); ctx.stroke();
+        ctx.restore();
+    });
+
+    medkits.forEach(m => {
+        if (imgMedkit.complete && imgMedkit.naturalWidth !== 0) ctx.drawImage(imgMedkit, m.x, m.y, m.width, m.height);
+        else {
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(m.x, m.y, m.width, m.height);
+            ctx.fillStyle = '#2ed573'; ctx.fillRect(m.x + 12, m.y + 5, 6, 20);
+            ctx.fillRect(m.x + 5, m.y + 12, 20, 6);
+        }
+    });
+
+    if (isLaserActive) {
+        const laserX = boss.x + boss.width / 2;
+        ctx.fillStyle = 'rgba(255, 242, 0, 0.3)';
+        ctx.fillRect(laserX - 22, boss.y + boss.height, 44, canvas.height);
+        ctx.fillStyle = '#FFD700';
+        ctx.fillRect(laserX - 12, boss.y + boss.height, 24, canvas.height);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(laserX - 4, boss.y + boss.height, 8, canvas.height);
+        drawWineGlass(laserX, boss.y - 5);
+    }
+
+    if (!gameStarted) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#FFD700';
+        ctx.font = 'bold 26px "Microsoft JhengHei", Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('點擊螢幕開始遊戲', canvas.width / 2, canvas.height / 2);
+        ctx.textAlign = 'left';
+        drawAllNPCs();
+        return;
+    }
+
+    let currentBossImg = imgBoss1;
+    if (bossPhase === 2) currentBossImg = imgBoss2;
+    if (bossPhase === 3) currentBossImg = imgBoss3;
+
+    if (currentBossImg.complete && currentBossImg.naturalWidth !== 0) {
+        ctx.drawImage(currentBossImg, boss.x, boss.y, boss.width, boss.height);
+    } else {
+        ctx.fillStyle = bossPhase === 1 ? '#ff4757' : (bossPhase === 2 ? '#e74c3c' : '#8e44ad');
+        ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
+    }
+
+    // Boss 血條
+    ctx.fillStyle = '#333';
+    ctx.fillRect(boss.x, boss.y - 12, boss.width, 6);
+    ctx.fillStyle = '#ff4757';
+    ctx.fillRect(boss.x, boss.y - 12, (Math.max(0, boss.hp) / boss.maxHp) * boss.width, 6);
+
+    shields.forEach(s => {
+        if (imgShield.complete && imgShield.naturalWidth !== 0) ctx.drawImage(imgShield, s.x, s.y, s.width, s.height);
+        else { ctx.fillStyle = '#1e90ff'; ctx.fillRect(s.x, s.y, s.width, s.height); }
+    });
+
+    if (player.invincibleFrame % 4 < 2) {
+        if (imgPlayer.complete && imgPlayer.naturalWidth !== 0) ctx.drawImage(imgPlayer, player.x, player.y, player.width, player.height);
+        else { ctx.fillStyle = '#00d2ff'; ctx.fillRect(player.x, player.y, player.width, player.height); }
+    }
+
+    ctx.fillStyle = '#2ed573';
+    ctx.beginPath();
+    ctx.arc(player.x + player.width / 2, player.y + player.height / 2, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    playerBullets.forEach(pb => {
+        ctx.fillStyle = pb.color;
+        ctx.beginPath(); ctx.arc(pb.x, pb.y, pb.radius, 0, Math.PI * 2); ctx.fill();
+    });
+
+    enemyBullets.forEach(eb => {
+        if (eb.isEnhanced) { ctx.save(); ctx.shadowColor = '#ff4757'; ctx.shadowBlur = 10; }
+        ctx.fillStyle = eb.isEnhanced ? '#ff4757' : eb.color;
+        if (eb.type === 'rect') {
+            ctx.save(); ctx.translate(eb.x, eb.y); ctx.rotate(eb.angle);
+            ctx.fillRect(-eb.width / 2, -eb.height / 2, eb.width, eb.height);
+            ctx.restore();
+        } else {
+            ctx.beginPath(); ctx.arc(eb.x, eb.y, eb.radius, 0, Math.PI * 2); ctx.fill();
+        }
+        if (eb.isEnhanced) ctx.restore();
+    });
+
+    puddings.forEach(p => {
+        ctx.fillStyle = '#f1c40f';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#7e5109';
+        ctx.beginPath(); ctx.arc(p.x, p.y - p.radius * 0.3, p.radius * 0.6, 0, Math.PI * 2); ctx.fill();
+    });
+
+    burgerSteaks.forEach(b => {
+        ctx.save();
+        ctx.strokeStyle = '#FFFF00'; ctx.lineWidth = 3.5; ctx.fillStyle = '#5c3317';
+        ctx.beginPath(); ctx.roundRect(b.x - b.width / 2, b.y - b.height / 2, b.width, b.height, 8);
+        ctx.fill(); ctx.stroke(); ctx.restore();
+    });
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 18px Arial';
+    ctx.fillText(`SCORE: ${score}`, playArea.left + 15, 30);
+
+    ctx.fillStyle = '#ff4757';
+    ctx.font = 'bold 14px Arial';
+    ctx.fillText(`HP: ${player.hp} / ${player.maxHp}`, playArea.left + 15, 55);
+
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 14px "Microsoft JhengHei", Arial';
+    ctx.fillText(`階段: ${bossPhase} / 3`, playArea.left + 15, 75);
+
+    drawAllNPCs();
+    drawQTEOverlay();
+    drawQTEReflection();
+
+    if (isPausedForPanel && !gameOver && !gameWin) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#FFD700';
+        ctx.font = 'bold 26px "Microsoft JhengHei", Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('⏸️ 遊戲暫停中 (控制台開啟)', canvas.width / 2, canvas.height / 2);
+        ctx.textAlign = 'left';
+    }
+
+    if (gameWin) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.88)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        let winText = "恭喜你成功打敗雪之惡魔(喜)";
+        let winImage = imgWin;
+
+        if (is1HpWinMode) {
+            winText = "疑似想到了某個棒球選手";
+            winImage = imgWin4;
+        } else if (hasUsedConsole) {
+            winText = "你作弊了，對吧?";
+            winImage = imgWin2;
+        } else if (!tookDamage) {
+            winText = "恭喜你獲得先輩超人的愛慕";
+            winImage = imgWin3;
+        }
+
+        // 獲勝圖片放大一倍 (原本 240x200 放大為 480x400)
+        const winW = 480;
+        const winH = 400;
+        if (winImage.complete && winImage.naturalWidth !== 0) {
+            ctx.drawImage(winImage, (canvas.width - winW) / 2, 20, winW, winH);
+        }
+
+        ctx.fillStyle = '#2ed573';
+        ctx.font = 'bold 24px "Microsoft JhengHei", Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(winText, canvas.width / 2, 470);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '16px "Microsoft JhengHei", Arial';
+        ctx.fillText('點擊重新開始被雷普', canvas.width / 2, 520);
+        ctx.textAlign = 'left';
+    }
+
+    if (gameOver) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.92)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 失敗圖片放大兩倍 (原本 360x360 放大為 720x720，畫布寬度 600px 自動切齊邊緣)
+        const loseSize = 520;
+        if (imgGameOver.complete && imgGameOver.naturalWidth !== 0) {
+            ctx.drawImage(imgGameOver, (canvas.width - loseSize) / 2, 10, loseSize, loseSize);
+        }
+
+        ctx.fillStyle = '#ff4757';
+        ctx.font = 'bold 28px "Microsoft JhengHei", Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('被無盡的厥力(悲)', canvas.width / 2, 545);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '16px "Microsoft JhengHei", Arial';
+        ctx.fillText('點擊重新開始被雷普', canvas.width / 2, 580);
+        ctx.textAlign = 'left';
+    }
 }
 
-function loop() {
+function animate() {
     update();
     draw();
-    requestAnimationFrame(loop);
+    requestAnimationFrame(animate);
 }
 
-loop();
+animate();
 </script>
 
 </body>
