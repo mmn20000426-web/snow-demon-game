@@ -3,70 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>會員制的打架 - 赤石大王的反擊</title>
+    <title>會員制的打架 - 赤石大王</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; touch-action: none; }
         body {
-            margin: 0; padding: 5px; background-color: #111; color: #fff;
+            margin: 0; padding: 10px; background-color: #111; color: #fff;
             font-family: Arial, sans-serif; display: flex; flex-direction: column;
             align-items: center; justify-content: center; min-height: 100vh; overflow-x: hidden;
         }
-        h2 { margin: 2px 0 8px 0; color: #FFD700; text-align: center; font-size: 20px; }
+        h2 { margin: 2px 0 12px 0; color: #FFD700; text-align: center; font-size: 22px; }
         
-        /* 模式選擇大廳 (Mode Menu) */
+        /* 主選單容器 */
         #menu-container {
             background: #1a1c23; border: 2px solid #FFD700; border-radius: 8px;
-            padding: 15px; width: min(100vw - 20px, 500px); text-align: center;
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.3); margin-bottom: 10px;
+            padding: 20px; width: min(100vw - 20px, 500px); text-align: center;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.3); display: block;
         }
-        .menu-title { font-size: 18px; color: #FFD700; font-weight: bold; margin-bottom: 12px; }
+        .menu-title { font-size: 18px; color: #FFD700; font-weight: bold; margin-bottom: 15px; }
         .menu-btn {
-            background: #1e90ff; color: white; border: none; padding: 10px 16px;
-            font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer;
-            margin: 5px; width: 90%; max-width: 280px; transition: 0.2s;
+            background: #1e90ff; color: white; border: none; padding: 12px 18px;
+            font-size: 15px; font-weight: bold; border-radius: 6px; cursor: pointer;
+            margin: 6px 0; width: 100%; transition: 0.2s;
         }
         .menu-btn:active { transform: scale(0.95); }
         .menu-btn.red { background: #ff4757; }
         .menu-btn.green { background: #2ed573; color: #111; }
         
-        /* 連線區塊 */
-        #net-panel { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #444; }
-        input[type="text"] {
-            padding: 6px; font-size: 16px; border-radius: 4px; border: 1px solid #555;
-            text-align: center; text-transform: uppercase; letter-spacing: 2px; width: 130px;
+        /* 連線設定區塊 */
+        #net-panel {
+            display: none; margin-top: 15px; padding-top: 15px;
+            border-top: 1px solid #444; background: #252836; border-radius: 6px; padding: 10px;
         }
-        #status-text { color: #2ed573; font-size: 13px; margin-top: 6px; font-weight: bold; }
+        input[type="text"] {
+            padding: 8px; font-size: 16px; border-radius: 4px; border: 1px solid #555;
+            text-align: center; text-transform: uppercase; letter-spacing: 2px; width: 140px; margin: 4px;
+        }
+        #status-text { color: #2ed573; font-size: 14px; margin-top: 8px; font-weight: bold; }
 
         /* 遊戲區域 */
-        #main-wrapper { display: none; flex-direction: column; align-items: center; gap: 10px; width: 100%; max-width: 1000px; }
+        #main-wrapper {
+            display: none; flex-direction: column; align-items: center; gap: 10px; width: 100%; max-width: 600px;
+        }
         #game-container {
             position: relative; box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
             border-radius: 8px; overflow: hidden; display: flex; flex-direction: column;
-            align-items: center; width: min(100vw - 20px, 600px); flex-shrink: 0; z-index: 1;
+            align-items: center; width: 100%; flex-shrink: 0; z-index: 1; background: #0d0f18;
         }
         canvas { background: #0d0f18; display: block; cursor: crosshair; width: 100%; height: auto; }
         
         /* 手機 UI 按鈕區 */
         .mobile-touch-bar {
             width: 100%; background: #1a1c23; display: flex; justify-content: space-around;
-            padding: 6px; border-top: 2px solid #333a4e;
+            padding: 8px; border-top: 2px solid #333a4e;
         }
         
         /* BOSS 手機玩家專用技能按鈕區 (PvP) */
         #boss-mobile-bar {
-            display: none; width: 100%; background: #2b1111; padding: 6px;
+            display: none; width: 100%; background: #2b1111; padding: 8px;
             border-top: 2px solid #ff4757; justify-content: space-around; flex-wrap: wrap; gap: 4px;
         }
         .boss-skill-btn {
             background: #e74c3c; color: white; border: 1px solid #fff; padding: 8px 12px;
-            font-size: 12px; font-weight: bold; border-radius: 6px; cursor: pointer;
+            font-size: 13px; font-weight: bold; border-radius: 6px; cursor: pointer;
         }
         .boss-skill-btn:active { transform: translateY(2px); background: #c0392b; }
 
         .mobile-btn {
-            background: #1e90ff; color: white; border: none; padding: 8px 14px;
-            font-size: 13px; font-weight: bold; border-radius: 6px; cursor: pointer;
+            background: #1e90ff; color: white; border: none; padding: 10px 16px;
+            font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer;
         }
     </style>
 </head>
@@ -82,20 +87,24 @@
     <button class="menu-btn" onclick="showMultiplayerSetup('pvp')">⚔️ 雙人赤石 - PvP (玩家 vs Boss)</button>
 
     <div id="net-panel">
-        <div id="pvp-role-select" style="display:none; margin-bottom: 8px;">
-            <label>選擇你的身份：</label>
-            <select id="role-select" style="padding: 4px; border-radius: 4px;">
+        <div id="pvp-role-select" style="display:none; margin-bottom: 10px;">
+            <label style="font-size: 14px; font-weight: bold;">你的身份：</label>
+            <select id="role-select" style="padding: 6px; border-radius: 4px; font-size: 14px;">
                 <option value="boss">👹 我要當 BOSS (房主)</option>
                 <option value="player">🛡️ 我要當 玩家 (加入者)</option>
             </select>
         </div>
 
-        <button class="menu-btn green" style="width: auto;" onclick="createRoom()">🏠 創建房間</button>
-        <div style="margin: 8px 0;">
-            <input type="text" id="room-code-input" maxlength="5" placeholder="5碼邀請碼">
-            <button class="menu-btn" style="width: auto; padding: 6px 12px;" onclick="joinRoom()">🔗 加入</button>
+        <div>
+            <button class="menu-btn green" style="width: auto; padding: 8px 16px;" onclick="createRoom()">🏠 創建房間</button>
         </div>
-        <div id="status-text">等待創建或輸入 5 碼邀請碼...</div>
+        
+        <div style="margin-top: 10px;">
+            <input type="text" id="room-code-input" maxlength="5" placeholder="5碼邀請碼">
+            <button class="menu-btn" style="width: auto; padding: 8px 16px;" onclick="joinRoom()">🔗 加入房間</button>
+        </div>
+        
+        <div id="status-text">請點擊創建房間或輸入 5 碼邀請碼</div>
     </div>
 </div>
 
@@ -104,15 +113,14 @@
         <canvas id="gameCanvas" width="600" height="600"></canvas>
         
         <div id="normal-touch-bar" class="mobile-touch-bar">
-            <button id="btn-shield-ui" class="mobile-btn" onclick="trySummonShield()">🛡️ 護盾 [U]</button>
-            <button class="mobile-btn" style="background:#8e44ad;" onclick="backToMenu()">🔙 回主選單</button>
+            <button id="btn-shield-ui" class="mobile-btn" onclick="trySummonShield()">🛡️ 護盾</button>
+            <button class="mobile-btn" style="background:#8e44ad;" onclick="backToMenu()">🔙 返回主選單</button>
         </div>
 
         <div id="boss-mobile-bar">
             <button class="boss-skill-btn" onclick="bossCastSkill('fan')">🍊 扇形彈幕</button>
             <button class="boss-skill-btn" onclick="bossCastSkill('laser')">⚡ 黃色雷射</button>
-            <button class="boss-skill-btn" onclick="bossCastSkill('burger')">🍔 漢堡肉</button>
-            <button class="boss-skill-btn" onclick="bossCastSkill('noodle')">🍜 麵條牆</button>
+            <button class="boss-skill-btn" onclick="backToMenu()" style="background:#8e44ad;">🔙 選單</button>
         </div>
     </div>
 </div>
@@ -121,30 +129,28 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// 模式與連線狀態
 let selectedMode = 'single'; // 'single', 'pve', 'pvp'
 let peer = null, conn = null;
 let roomCode = '';
-let myNetRole = 'host'; // 'host' 或 'guest'
+let myNetRole = 'host';
 let isConnected = false;
+let gameRunning = false;
 
-// 遊戲參數設定 (單人預設)
+// 遊戲參數
 let bulletSpeedMult = 1.0;
 let bossHpMult = 1.0;
 
-// 物件定義
 const playArea = { left: 90, right: 510, width: 420 };
 const player = { x: 278, y: 520, width: 44, height: 44, hp: 25, maxHp: 25, speed: 6 };
 const boss = { x: 240, y: 35, width: 120, height: 70, hp: 50, maxHp: 50, speed: 2.5, dir: 1 };
 const enemyBullets = [];
-const playerBullets = [];
 
-// --- 選單邏輯 ---
+// --- 選單動作 ---
 function startSingleMode() {
     selectedMode = 'single';
     bulletSpeedMult = 1.0;
     bossHpMult = 1.0;
-    initGame();
+    enterGameScreen();
 }
 
 function showMultiplayerSetup(mode) {
@@ -154,12 +160,15 @@ function showMultiplayerSetup(mode) {
 }
 
 function backToMenu() {
+    gameRunning = false;
     document.getElementById('main-wrapper').style.display = 'none';
     document.getElementById('menu-container').style.display = 'block';
-    if (peer) peer.destroy();
+    document.getElementById('net-panel').style.display = 'none';
+    if (peer) { peer.destroy(); peer = null; }
+    isConnected = false;
 }
 
-// --- 5 碼 WebRTC 連線機制 ---
+// --- WebRTC 5 碼連線 ---
 function generate5Code() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let res = '';
@@ -172,13 +181,13 @@ function createRoom() {
     myNetRole = 'host';
     peer = new Peer('MBR-' + roomCode);
 
-    document.getElementById('status-text').innerText = `房間建立！邀請碼：【 ${roomCode} 】`;
+    document.getElementById('status-text').innerText = `房間已建立！邀請碼：【 ${roomCode} 】`;
 
     peer.on('connection', c => {
         conn = c;
         setupConn();
-        document.getElementById('status-text').innerText = `連線成功！準備進入遊戲...`;
-        setTimeout(startMultiplayerGame, 1000);
+        document.getElementById('status-text').innerText = `連線成功！正在進入遊戲...`;
+        setTimeout(startMultiplayerGame, 800);
     });
 }
 
@@ -224,14 +233,13 @@ function startMultiplayerGame() {
         bulletSpeedMult = 1.0;
         bossHpMult = 1.0;
     }
-    initGame();
+    enterGameScreen();
 }
 
-function initGame() {
+function enterGameScreen() {
     document.getElementById('menu-container').style.display = 'none';
     document.getElementById('main-wrapper').style.display = 'flex';
 
-    // 依據 PvP 角色切換手機按鈕介面
     if (selectedMode === 'pvp' && myNetRole === 'host' && document.getElementById('role-select').value === 'boss') {
         document.getElementById('boss-mobile-bar').style.display = 'flex';
         document.getElementById('normal-touch-bar').style.display = 'none';
@@ -243,9 +251,11 @@ function initGame() {
     boss.maxHp = 50 * bossHpMult;
     boss.hp = boss.maxHp;
     player.hp = player.maxHp;
+    enemyBullets.length = 0;
+    gameRunning = true;
 }
 
-// --- BOSS 手機技能發動 (PvP 模式) ---
+// --- Boss 技能 ---
 function bossCastSkill(skillType) {
     castBossSkill(skillType);
     if (conn) conn.send({ type: 'boss_skill', skill: skillType });
@@ -267,8 +277,14 @@ function castBossSkill(type) {
     }
 }
 
-// --- 觸控移動 (支援玩家與 BOSS) ---
+function trySummonShield() {
+    // 護盾簡易效果
+    player.hp = Math.min(player.maxHp, player.hp + 2);
+}
+
+// --- 手機觸控 ---
 canvas.addEventListener('touchmove', e => {
+    if (!gameRunning) return;
     e.preventDefault();
     const rect = canvas.getBoundingClientRect();
     const touch = e.touches[0];
@@ -283,23 +299,20 @@ canvas.addEventListener('touchmove', e => {
     }
 }, { passive: false });
 
-// --- 主循環與繪製 ---
+// --- 主循環 ---
 function update() {
-    // PvE 或單人模式下的 AI Boss 移動
+    if (!gameRunning) return;
+
     if (selectedMode !== 'pvp' || myNetRole !== 'host') {
         boss.x += boss.speed * boss.dir;
         if (boss.x <= playArea.left || boss.x + boss.width >= playArea.right) boss.dir *= -1;
-        
-        // 自動發射子彈 (套用 1.35 倍速)
         if (Math.random() < 0.03) castBossSkill('fan');
     }
 
-    // 子彈移動
     for (let i = enemyBullets.length - 1; i >= 0; i--) {
         const eb = enemyBullets[i];
         eb.x += eb.vx; eb.y += eb.vy;
 
-        // 碰撞判定
         const dx = (player.x + player.width / 2) - eb.x;
         const dy = (player.y + player.height / 2) - eb.y;
         if (Math.sqrt(dx * dx + dy * dy) < eb.radius + 15) {
@@ -310,7 +323,6 @@ function update() {
         if (eb.y > canvas.height) enemyBullets.splice(i, 1);
     }
 
-    // 雙人同步資料
     if (isConnected && conn) {
         if (myNetRole === 'host') {
             conn.send({ type: 'sync', bossX: boss.x, bossHp: boss.hp, playerHp: player.hp });
@@ -323,7 +335,6 @@ function update() {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 邊界線
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
     ctx.strokeRect(playArea.left, 0, playArea.width, canvas.height);
 
