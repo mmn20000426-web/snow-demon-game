@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>會員制的打架 - 三階段 BOSS 戰</title>
+    <title>會員制的打架 - 三階段 BOSS 戰 (WebRTC 連線版)</title>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; touch-action: none; }
         body {
@@ -12,6 +13,16 @@
             align-items: center; justify-content: center; min-height: 100vh; overflow-x: hidden;
         }
         h2 { margin: 2px 0 8px 0; color: #FFD700; text-align: center; font-size: 20px; }
+        
+        /* WebRTC 聯機大廳面板 */
+        #webrtc-lobby {
+            background: #1a1c23; border: 2px solid #2ed573; border-radius: 6px;
+            padding: 8px 12px; margin-bottom: 8px; width: min(100vw - 20px, 600px);
+            text-align: center; font-size: 13px;
+        }
+        #webrtc-lobby input { padding: 4px 8px; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff; }
+        #webrtc-lobby button { padding: 4px 10px; background: #2ed573; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-left: 4px; }
+
         #main-wrapper { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; max-width: 1000px; }
         #game-container {
             position: relative; box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
@@ -107,6 +118,14 @@
 <body>
 
 <h2 id="game-title">會員制的打架</h2>
+
+<div id="webrtc-lobby">
+    <span>我的 Peer ID: <strong id="my-peer-id" style="color:#2ed573;">生成中...</strong></span>
+    <span style="margin: 0 8px;">|</span>
+    <input type="text" id="target-peer-id" placeholder="輸入房主 ID">
+    <button onclick="connectToPeer()">加入房間</button>
+    <div id="rtc-status" style="font-size: 11px; color: #aaa; margin-top: 2px;">未連線 (可直接進行單人遊戲)</div>
+</div>
 
 <div id="main-wrapper">
     <div id="game-container">
@@ -206,9 +225,67 @@
 <script>
 // --- 模式與網址參數分析 ---
 const urlParams = new URLSearchParams(window.location.search);
-const gameMode = urlParams.get('mode') || 'single'; // 'single', 'pve', 'pvp'
-const pvpRole = urlParams.get('pvpRole') || 'player'; // 'boss', 'player'
-const isMultiplayer = gameMode === 'pve' || gameMode === 'pvp';
+let gameMode = urlParams.get('mode') || 'single'; // 'single', 'pve', 'pvp'
+let pvpRole = urlParams.get('pvpRole') || 'player'; // 'boss', 'player'
+let isMultiplayer = gameMode === 'pve' || gameMode === 'pvp';
+
+// WebRTC 全域變數
+let peer = null;
+let conn = null;
+let isHost = true; // 預設創建者為 Host
+
+function initWebRTC() {
+    peer = new Peer();
+    peer.on('open', (id) => {
+        document.getElementById('my-peer-id').innerText = id;
+    });
+    peer.on('connection', (connection) => {
+        conn = connection;
+        isHost = true;
+        gameMode = 'pve';
+        isMultiplayer = true;
+        player2.isAlive = true;
+        setupRTCListeners();
+        document.getElementById('rtc-status').innerText = '🟢 已連線！玩家 2 已進入遊戲';
+    });
+}
+
+function connectToPeer() {
+    const targetId = document.getElementById('target-peer-id').value.trim();
+    if (!targetId) return alert('請輸入房主的 Peer ID');
+    conn = peer.connect(targetId);
+    isHost = false;
+    gameMode = 'pve';
+    isMultiplayer = true;
+    player2.isAlive = true;
+    setupRTCListeners();
+    document.getElementById('rtc-status').innerText = '🟡 連線中...';
+}
+
+function setupRTCListeners() {
+    conn.on('open', () => {
+        document.getElementById('rtc-status').innerText = '🟢 連線成功！即時同步中';
+    });
+    conn.on('data', (data) => {
+        if (isHost) {
+            // Host 接收來自 Client 的按鍵輸入
+            if (data.type === 'INPUT') {
+                player2.x = data.x;
+                player2.y = data.y;
+                if (data.shield) trySummonShield();
+            }
+        } else {
+            // Client 接收 Host 傳來的遊戲世界數據
+            if (data.type === 'SYNC') {
+                boss.x = data.boss.x; boss.y = data.boss.y; boss.hp = data.boss.hp; boss.maxHp = data.boss.maxHp;
+                player.x = data.player.x; player.y = data.player.y; player.hp = data.player.hp;
+                player2.hp = data.player2.hp;
+                bossPhase = data.bossPhase;
+                gameOver = data.gameOver; gameWin = data.gameWin;
+            }
+        }
+    });
+}
 
 // 介面適應與控制台封鎖
 if (isMultiplayer) {
@@ -875,7 +952,6 @@ function handlePlayerHit(p, damage) {
         if (p.hp <= 0) {
             p.hp = 0;
             p.isAlive = false;
-            // 全員死亡才結束遊戲
             if (!player.isAlive && (!isMultiplayer || !player2.isAlive)) {
                 triggerGameOver();
             }
@@ -888,6 +964,25 @@ function update() {
 
     frameCount++;
     score++;
+
+    // WebRTC: Client 傳送數據給 Host
+    if (!isHost && conn && conn.open) {
+        conn.send({
+            type: 'INPUT',
+            x: player2.x,
+            y: player2.y,
+            shield: keys['u'] || keys['U']
+        });
+    }
+
+    // WebRTC: Host 廣播即時資料給 Client
+    if (isHost && conn && conn.open && frameCount % 2 === 0) {
+        conn.send({
+            type: 'SYNC',
+            boss, player, player2,
+            bossPhase, gameOver, gameWin
+        });
+    }
 
     if (shieldCooldown > 0) shieldCooldown--;
     if (qteSuccessMsgTimer > 0) qteSuccessMsgTimer--;
@@ -1554,8 +1649,9 @@ function animate() {
     requestAnimationFrame(animate);
 }
 
+// 啟動 WebRTC 與主畫面迴圈
+initWebRTC();
 animate();
 </script>
-
 </body>
 </html>
