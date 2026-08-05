@@ -23,7 +23,6 @@
             padding: 20px;
         }
         .card {
-            /* 半透明背景加毛玻璃效果 */
             background: rgba(31, 40, 51, 0.85);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
@@ -119,7 +118,6 @@
             background: #ff6b81;
         }
 
-        /* 🎮 擴充的新樣式區域 */
         .sub-panel {
             display: none;
             background: rgba(11, 12, 16, 0.6);
@@ -169,6 +167,13 @@
         .info-box li {
             margin-bottom: 4px;
         }
+        .error-msg {
+            color: #ff4757;
+            font-size: 13px;
+            margin-top: 6px;
+            display: block;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -202,6 +207,7 @@
         <div class="form-group">
             <label for="room-code">🔑 邀請碼 (加入房間填寫)：</label>
             <input type="text" id="room-code" class="form-control" placeholder="請輸入 5 位數邀請碼" maxlength="5">
+            <span id="code-error" class="error-msg"></span>
         </div>
 
         <div class="btn-group" style="margin-bottom: 0;">
@@ -211,14 +217,24 @@
         </div>
     </div>
 
-    <div id="lobby-panel" class="sub-panel">
-        <h3>🏠 房間準備大廳</h3>
+    <div id="host-lobby-panel" class="sub-panel">
+        <h3>🏠 房主等待室</h3>
         <p style="text-align: center; margin-bottom: 10px;">房間邀請碼：<b id="display-room-code" style="color: #66fcf1; font-size: 20px;">-----</b></p>
         <p id="lobby-status" style="font-size: 14px; color: #ff4757; text-align: center; margin-bottom: 15px;">⏳ 等待隊友加入中...</p>
         
         <div class="btn-group" style="margin-bottom: 0;">
             <button id="start-game-btn" class="btn btn-primary" onclick="hostStartGame()">🚀 開始遊戲！</button>
             <button class="btn btn-danger" style="padding: 8px;" onclick="closeMultiplayerPanel()">🔙 取消解散</button>
+        </div>
+    </div>
+
+    <div id="guest-lobby-panel" class="sub-panel">
+        <h3>⏳ 參加者等待室</h3>
+        <p style="text-align: center; margin-bottom: 10px;">已成功加入房間：<b id="guest-room-code" style="color: #66fcf1; font-size: 20px;">-----</b></p>
+        <p style="font-size: 14px; color: #66fcf1; text-align: center; margin-bottom: 15px;">請等待房主點擊「開始遊戲」...</p>
+        
+        <div class="btn-group" style="margin-bottom: 0;">
+            <button class="btn btn-danger" style="padding: 8px;" onclick="closeMultiplayerPanel()">🔙 離開房間</button>
         </div>
     </div>
 
@@ -234,20 +250,22 @@
 </div>
 
 <script>
-    let currentMultiMode = 'pve'; // pve 或 pvp
+    let currentMultiMode = 'pve'; 
     let generatedRoomCode = '';
 
-    // 1. 單人赤石模式 (原本的版本)
+    // 1. 單人模式
     function startSinglePlayer() {
         window.location.href = 'game.html?mode=single';
     }
 
-    // 2. 打開雙人連線設定面板
+    // 2. 打開連線面板
     function openMultiplayerPanel(mode) {
         currentMultiMode = mode;
         document.getElementById('main-menu').style.display = 'none';
         document.getElementById('multiplayer-panel').style.display = 'block';
-        document.getElementById('lobby-panel').style.display = 'none';
+        document.getElementById('host-lobby-panel').style.display = 'none';
+        document.getElementById('guest-lobby-panel').style.display = 'none';
+        document.getElementById('code-error').innerText = '';
 
         if (mode === 'pvp') {
             document.getElementById('panel-title').innerText = '⚔️ 雙人 PvP 對戰模式';
@@ -258,11 +276,12 @@
         }
     }
 
-    // 關閉面板返回主選單
+    // 關閉面板
     function closeMultiplayerPanel() {
         document.getElementById('main-menu').style.display = 'flex';
         document.getElementById('multiplayer-panel').style.display = 'none';
-        document.getElementById('lobby-panel').style.display = 'none';
+        document.getElementById('host-lobby-panel').style.display = 'none';
+        document.getElementById('guest-lobby-panel').style.display = 'none';
     }
 
     // 產生 5 碼隨機邀請碼
@@ -278,29 +297,54 @@
     // 3. 創建房間 (成為房主)
     function createRoom() {
         generatedRoomCode = generateCode();
-        const pvpRole = document.getElementById('pvp-role').value;
+        
+        // 🔒 將房間碼存入本地快取 (模擬伺服器上記錄房號)
+        localStorage.setItem("active_room_" + generatedRoomCode, JSON.stringify({
+            mode: currentMultiMode,
+            created: Date.now()
+        }));
 
         document.getElementById('multiplayer-panel').style.display = 'none';
-        document.getElementById('lobby-panel').style.display = 'block';
+        document.getElementById('host-lobby-panel').style.display = 'block';
         document.getElementById('display-room-code').innerText = generatedRoomCode;
     }
 
-    // 4. 房主決定何時開始遊戲
+    // 4. 房主開始遊戲
     function hostStartGame() {
         const pvpRole = document.getElementById('pvp-role').value;
-        // 帶上參數跳轉至 game.html
         window.location.href = `game.html?mode=${currentMultiMode}&role=host&room=${generatedRoomCode}&pvpRole=${pvpRole}`;
     }
 
-    // 5. 加入房間 (成為參加者)
+    // 5. 加入房間 (參加者) - ✨ 已修復 Bug！
     function joinRoom() {
         const inputCode = document.getElementById('room-code').value.trim().toUpperCase();
+        const errorSpan = document.getElementById('code-error');
+
+        // 防呆 1：長度不對
         if (inputCode.length !== 5) {
-            alert('請輸入正確的 5 位數房間邀請碼！');
+            errorSpan.innerText = '❌ 請輸入完整的 5 位數邀請碼！';
             return;
         }
-        // 加入者直接進入 game.html 等待房主開始同步
-        window.location.href = `game.html?mode=${currentMultiMode}&role=guest&room=${inputCode}`;
+
+        // 防呆 2：驗證邀請碼是否存在 (模擬 API/伺服器驗證)
+        const roomData = localStorage.getItem("active_room_" + inputCode);
+        
+        if (!roomData) {
+            errorSpan.innerText = '❌ 邀請碼不存在或房間已關閉！';
+            return; // ⛔ 強制阻擋，不讓進入！
+        }
+
+        // 驗證成功 -> 切換至參加者等待室
+        errorSpan.innerText = '';
+        document.getElementById('multiplayer-panel').style.display = 'none';
+        document.getElementById('guest-lobby-panel').style.display = 'block';
+        document.getElementById('guest-room-code').innerText = inputCode;
+
+        /* 💡 若未來接入伺服器 (Socket.io)，可以在這裡加上監聽：
+           socket.on('gameStarted', () => {
+               window.location.href = `game.html?mode=${currentMultiMode}&role=guest&room=${inputCode}`;
+           });
+        */
     }
 </script>
 
