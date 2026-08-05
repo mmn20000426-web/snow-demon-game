@@ -189,6 +189,10 @@ function createRoom() {
         document.getElementById('status-text').innerText = `連線成功！正在進入遊戲...`;
         setTimeout(startMultiplayerGame, 800);
     });
+
+    peer.on('error', err => {
+        document.getElementById('status-text').innerText = '建立房間失敗，請重新嘗試。';
+    });
 }
 
 function joinRoom() {
@@ -200,10 +204,19 @@ function joinRoom() {
 
     peer.on('open', () => {
         conn = peer.connect('MBR-' + inputCode);
+        
         conn.on('open', () => {
             setupConn();
             startMultiplayerGame();
         });
+
+        conn.on('error', err => {
+            alert('加入失敗，請檢查邀請碼是否正確！');
+        });
+    });
+
+    peer.on('error', err => {
+        alert('連線失敗，請重試！');
     });
 }
 
@@ -228,7 +241,7 @@ function setupConn() {
 function startMultiplayerGame() {
     if (selectedMode === 'pve') {
         bulletSpeedMult = 1.35; // 雙人 PvE：子彈速度 1.35 倍
-        bossHpMult = 2.0;      // 雙人 PvE：Boss 血量 2 倍
+        bossHpMult = 2.0;       // 雙人 PvE：Boss 血量 2 倍
     } else {
         bulletSpeedMult = 1.0;
         bossHpMult = 1.0;
